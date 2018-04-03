@@ -11,8 +11,7 @@ OUTPUT_FILE_EXTENSION="${INPUT_FILE##*.}"
 
 mkdir -p "$OUTPUT_FILE_LOCATION"
 
-split_with_time()
-	{
+split_with_time(){
 		echo "Splitting Video with respect to time..."
 		
 		SEGMENT_DURATION="10"
@@ -27,6 +26,19 @@ split_with_time()
 
 split_with_size(){
 		echo "Splitting Video with respect to size"
+
+		FILE_SIZE="71"		
+		CHUNK_SIZE="10"
+		TOTAL_CHUNKS="$[FILE_SIZE/CHUNK_SIZE]"
+		
+		echo ">>>>>>>" $TOTAL_CHUNKS
+		CHUNK_NUMBER="1"
+		while [ $CHUNK_NUMBER -lt $TOTAL_CHUNKS ];
+		do
+			ffmpeg -i ${INPUT_FILE_LOCATION}/${INPUT_FILE} -fs $CHUNK_SIZE"M" -c copy ${OUTPUT_FILE_LOCATION}/$OUTPUT_FILE_NAME"$CHUNK_NUMBER".${OUTPUT_FILE_EXTENSION}
+			CHUNK_NUMBER=`expr $CHUNK_NUMBER + 1`
+		done
+
 }
 
 echo " "
