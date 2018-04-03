@@ -22,7 +22,7 @@ split_with_time()
 		DURATION_TIMESTAMP=$(echo ${DURATION} | awk -F: '{ print ($1 * 3600) + ($2 * 60) + $3 }')
 		echo ${DURATION_TIMESTAMP}
 
-		ffmpeg -i ${INPUT_FILE_LOCATION}/${INPUT_FILE} -c copy -map 0 -segment_time ${SEGMENT_DURATION} -f segment ${OUTPUT_FILE_LOCATION}/${OUTPUT_FILE_NAME}%03d.${OUTPUT_FILE_EXTENSION}
+		ffmpeg -i ${INPUT_FILE_LOCATION}/${INPUT_FILE} -c copy -map 0 -segment_time ${SEGMENT_DURATION} -reset_timestamps 1 -f segment ${OUTPUT_FILE_LOCATION}/${OUTPUT_FILE_NAME}%03d.${OUTPUT_FILE_EXTENSION}
 }
 
 split_with_size(){
