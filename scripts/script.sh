@@ -27,17 +27,40 @@ split_with_time(){
 split_with_size(){
 		echo "Splitting Video with respect to size"
 
-		FILE_SIZE="71"		
-		CHUNK_SIZE="10"
-		TOTAL_CHUNKS="$[FILE_SIZE/CHUNK_SIZE]"
-		
-		echo ">>>>>>>" $TOTAL_CHUNKS
-		CHUNK_NUMBER="1"
-		while [ $CHUNK_NUMBER -lt $TOTAL_CHUNKS ];
+		# size in MB
+		VIDEO_SEGMENT_SIZE="10"
+
+		OUTPUT_DIR="/home/ubuntu/ammo-exp/test-chunks"
+		INPUT_VIDEO="/home/ubuntu/ammo-exp/vid.mp4"
+
+		VIDEO_DURATION=`ffprobe ${INPUT_FILE_LOCATION}/${INPUT_FILE} -show_format -v quiet  | grep "duration" | cut -d "=" -f2`
+		echo "video duration : $VIDEO_DURATION"
+
+		START_TIME=0
+		LAST_DURATION=0
+		CHUNK_NUMBER=0
+
+		# divide video in chunks based on segment size
+		while true;
 		do
-			ffmpeg -i ${INPUT_FILE_LOCATION}/${INPUT_FILE} -fs $CHUNK_SIZE"M" -c copy ${OUTPUT_FILE_LOCATION}/$OUTPUT_FILE_NAME"$CHUNK_NUMBER".${OUTPUT_FILE_EXTENSION}
-			CHUNK_NUMBER=`expr $CHUNK_NUMBER + 1`
+			CHUNK_NUMBER=$((CHUNK_NUMBER+1))
+			echo "Preparing chunk # ${CHUNK_NUMBER}"
+			ffmpeg -loglevel panic  -ss ${START_TIME}  -i ${INPUT_FILE_LOCATION}/${INPUT_FILE}  -vcodec copy -acodec copy  -fs ${VIDEO_SEGMENT_SIZE}Mi ${OUTPUT_FILE_LOCATION}/${OUTPUT_FILE_NAME}${CHUNK_NUMBER}.${OUTPUT_FILE_EXTENSION}
+			LAST_VIDEO_DURATION=`ffprobe ${OUTPUT_FILE_LOCATION}/${OUTPUT_FILE_NAME}${CHUNK_NUMBER}.${OUTPUT_FILE_EXTENSION}  -show_format -v quiet  | grep "duration" | cut -d "=" -f2`
+			LAST_CHUNK_SIZE=`du -k ${OUTPUT_FILE_LOCATION}/${OUTPUT_FILE_NAME}${CHUNK_NUMBER}.${OUTPUT_FILE_EXTENSION}  | cut -f1`
+			OFFSET_DURATION=`echo $START_TIME + $LAST_VIDEO_DURATION | bc`
+			echo "offset duration : $OFFSET_DURATION"
+			if [ $(echo "$OFFSET_DURATION  >= $VIDEO_DURATION" | bc) -ne 0 ] ; then
+				echo "redundant chunk .... "
+				sudo rm -rf ${OUTPUT_FILE_LOCATION}/${OUTPUT_FILE_NAME}${CHUNK_NUMBER}.${OUTPUT_FILE_EXTENSION}
+				break
+			else
+				START_TIME=`echo $START_TIME + $LAST_VIDEO_DURATION | bc`
+			fi		
 		done
+
+		echo "Video succesfully chunked"
+
 
 }
 
