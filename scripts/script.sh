@@ -52,7 +52,7 @@ split_with_size(){
 			echo "offset duration : $OFFSET_DURATION"
 			if [ $(echo "$OFFSET_DURATION  >= $VIDEO_DURATION" | bc) -ne 0 ] ; then
 				echo "redundant chunk .... "
-				sudo rm -rf ${OUTPUT_FILE_LOCATION}/${OUTPUT_FILE_NAME}${CHUNK_NUMBER}.${OUTPUT_FILE_EXTENSION}
+				rm -rf ${OUTPUT_FILE_LOCATION}/${OUTPUT_FILE_NAME}${CHUNK_NUMBER}.${OUTPUT_FILE_EXTENSION}
 				break
 			else
 				START_TIME=`echo $START_TIME + $LAST_VIDEO_DURATION | bc`
