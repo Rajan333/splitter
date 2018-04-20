@@ -1,20 +1,12 @@
 #!/bin/bash
 ##__AUTHOR: RAJAN MIDDHA__##
 
-INPUT_FILE_LOCATION="/Users/rajan/ns/sample"
-OUTPUT_FILE_LOCATION="$(pwd)/output_files"
-INPUT_FILE="sample.mp4"
-OUTPUT_FILE="out.mkv"
-
-OUTPUT_FILE_NAME="${INPUT_FILE%.*}"
-OUTPUT_FILE_EXTENSION="${INPUT_FILE##*.}"
-
-mkdir -p "$OUTPUT_FILE_LOCATION"
 
 split_with_time(){
 		echo "Splitting Video with respect to time..."
-		
-		SEGMENT_DURATION="10"
+
+		echo "value:: $SEGMENT_VALUE"
+		SEGMENT_DURATION="$SEGMENT_VALUE"
 
 		DURATION=$(ffprobe -i ${INPUT_FILE_LOCATION}/${INPUT_FILE} 2>&1 | grep Duration | awk '{print $2}' | tr -d ',')
 		echo ${DURATION}
@@ -28,10 +20,7 @@ split_with_size(){
 		echo "Splitting Video with respect to size"
 
 		# size in MB
-		VIDEO_SEGMENT_SIZE="10"
-
-		OUTPUT_DIR="/home/ubuntu/ammo-exp/test-chunks"
-		INPUT_VIDEO="/home/ubuntu/ammo-exp/vid.mp4"
+		VIDEO_SEGMENT_SIZE="$SEGMENT_VALUE"
 
 		VIDEO_DURATION=`ffprobe ${INPUT_FILE_LOCATION}/${INPUT_FILE} -show_format -v quiet  | grep "duration" | cut -d "=" -f2`
 		echo "video duration : $VIDEO_DURATION"
@@ -64,20 +53,147 @@ split_with_size(){
 
 }
 
-echo " "
-echo "1) Split Video Chunks according to Time"
-echo "2) Split Video Chunks according to Size"
-echo " "
-
-read -p "Enter Input: " input
-echo " "
-
-case "$input" in
-	1) split_with_time ;;
-
-	2) split_with_size ;;
-
-	*) echo "Invalid Input. Exiting now"
-	   exit 43 ;;
-esac
+switch_case(){
 	
+	mkdir -p "$OUTPUT_FILE_LOCATION"
+	OUTPUT_FILE_NAME="${INPUT_FILE%.*}"
+	OUTPUT_FILE_EXTENSION="${INPUT_FILE##*.}"
+
+	echo " "
+	echo "1) Split Video Chunks according to Time"
+	echo "2) Split Video Chunks according to Size"
+	echo " "
+
+	read -p "Enter Input: " input
+	echo " "
+
+	case "$input" in
+		1) split_with_time ;;
+
+		2) split_with_size ;;
+
+		*) echo "Invalid Input. Exiting now"
+		   exit 43 ;;
+	esac
+}
+
+
+ARGUMENTS="$#"
+echo "lenght:>>>> ${#ARGUMENTS}"
+if [ "$ARGUMENTS" == "0" ]; then
+	INPUT_FILE_LOCATION="/Users/rajan/ns/sample"
+	OUTPUT_FILE_LOCATION="$(pwd)/output_files"
+	INPUT_FILE="sample.mp4"
+	OUTPUT_FILE="out.mkv"
+	SEGMENT_VALUE="10"
+
+	switch_case
+	
+elif [ "$ARGUMENTS" == "10" ]; then
+	while [ "$ARGUMENTS" -gt 0 ]
+	do
+		ARGUMENTS=$(($ARGUMENTS - 2))
+		key="$1"
+		echo $key
+		case $key in
+		    --splitBy) 
+				SPLIT_TYPE=$2
+		    	shift 2
+		    	;;
+
+		    --segment) 
+				SEGMENT_VALUE=$2 
+				shift 2
+				;;
+
+		    -i | --input) 
+				INPUT_FILE_LOCATION=$2 
+				shift 2
+				;;
+
+		    -o | --output) 
+				OUTPUT_FILE_LOCATION=$2 
+				shift 2
+				;;
+
+		    --file) 
+				INPUT_FILE=$2 
+				shift 2
+				;;
+
+		    *)  echo "$1"
+				shift 
+				;;
+		esac
+	done
+
+		echo SPLIT_TYPE = "${SPLIT_TYPE}"
+		echo SEGMENT_VALUE = "${SEGMENT_VALUE}"
+		echo INPUT_FILE_LOCATION = "${INPUT_FILE_LOCATION}"
+		echo OUTPUT_FILE_LOCATION = "${OUTPUT_FILE_LOCATION}"
+		echo INPUT_FILE = "${INPUT_FILE}"
+
+		mkdir -p "$OUTPUT_FILE_LOCATION"
+		OUTPUT_FILE_NAME="${INPUT_FILE%.*}"
+		OUTPUT_FILE_EXTENSION="${INPUT_FILE##*.}"
+
+		if [ "$SPLIT_TYPE" == "time" ]; then
+			split_with_time
+
+		elif [ "$SPLIT_TYPE" == "size" ]; then
+			split_with_size
+		
+		else 
+			echo "Wrong Parameter Passed."
+			exit 50
+		fi
+	
+	
+
+else
+	echo "Wrong Input. Exiting now."
+	exit 77
+fi
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
