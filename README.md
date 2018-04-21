@@ -11,6 +11,13 @@ Script accepts the following parameters :
 *    -f | --file: <file_name>
 *    -o |--output: <Output file location (dir)>
 
+## How to run
+### If No Paramater is passed
+```sh
+    $ bash splitter.sh
+```
+
+### If Parameters are passed
 #### Split by time
 ```sh
     $ bash splitter.sh --splitBy time --segment <time_duration> --i <input_file_path> --file <file_name> -o <output_file_path>
@@ -19,3 +26,8 @@ Script accepts the following parameters :
 ```sh
     $ bash splitter.sh --splitBy size --segment <time_duration> --i <input_file_path> --file <file_name> -o <output_file_path>
 ```
+
+
+##### To know more about ffmpeg, Refer to the following pages.
+* [ffmpeg doc-1](https://ffmpeg.org/ffmpeg.html)
+* [ffmpeg doc-2](https://www.ffmpeg.org/documentation.html)
