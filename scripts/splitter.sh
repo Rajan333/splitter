@@ -1,10 +1,6 @@
 #!/bin/bash
 ##__AUTHOR: RAJAN MIDDHA__##
 
-## How to run
-## bash video_splitter.sh
-## bash script.sh --splitBy time --segment 10 --input /Users/rajan/ns/sample --file sample.mp4 --out output_files
-
 split_with_time(){
 		echo "Splitting Video with respect to time..."
 
@@ -119,7 +115,7 @@ elif [ "$ARGUMENTS" == "10" ]; then
 				shift 2
 				;;
 
-		    --file) 
+		    -f | --file) 
 				INPUT_FILE=$2 
 				shift 2
 				;;
