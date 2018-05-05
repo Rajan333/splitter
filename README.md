@@ -31,3 +31,14 @@ Script accepts the following parameters :
 ##### To know more about ffmpeg, Refer to the following pages.
 * [ffmpeg doc-1](https://ffmpeg.org/ffmpeg.html)
 * [ffmpeg doc-2](https://www.ffmpeg.org/documentation.html)
+
+
+
+# Video Merger
+----
+The script uses **ffmpeg** library to merge muliple video chunks having same extension.
+
+## How to run
+```sh
+    $ bash merger.sh
+```
