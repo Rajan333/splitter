@@ -31,12 +31,12 @@ elif [ "$ARGUMENTS" == "6" ]; then
 		key="$1"
 		echo $key
 		case $key in
-		    -i | --input_foler)
+		    -i | --input)
 				INPUT_FOLDER=$2
 		    	shift 2
 		    	;;
 
-		    -o | --output_folder)
+		    -o | --output)
 				OUTPUT_FOLDER=$2
 				shift 2
 				;;
