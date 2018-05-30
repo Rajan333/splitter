@@ -7,7 +7,7 @@ merge_video_segments(){
 	echo "Creating file list..."
 	echo " " > $CURRENT_PATH/merge_list.txt
 
-	for segment in `ls ${INPUT_FOLDER}`
+	for segment in `ls -ltr ${INPUT_FOLDER} | awk '{print $9}'`
 	do
 		echo "file '${INPUT_FOLDER}/${segment}'" >> ${CURRENT_PATH}/merge_list.txt
 	done
