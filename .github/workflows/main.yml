@@ -1,0 +1,27 @@
+name: List Files in Repository
+
+on:
+  push:
+    branches:
+      - main  # Trigger this action on pushes to the `main` branch
+  pull_request:
+    branches:
+      - main  # Trigger on PRs targeting the `main` branch
+  workflow_dispatch:  # Allows manual trigger from GitHub UI
+
+jobs:
+  list-files:
+    # Use self-hosted runner
+    runs-on: self-hosted
+
+    steps:
+      # Checkout the repository
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # List all files in the repository
+      - name: List all files
+        run: |
+          echo "Listing all files in the repository:"
+          sleep 20
+          find . -type f
