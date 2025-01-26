@@ -6,7 +6,7 @@ on:
       branch:
         description: 'Branch to release from'
         required: true
-        default: 'main'
+        default: 'master'
       service:
         description: 'Service to release'
         required: true
@@ -42,8 +42,8 @@ jobs:
 
       - name: Commit Updated Manifest
         run: |
-          git config user.name "Rajan333"
-          git config user.email "middha.rajan@gmail.com"
+          git config user.name "Github Actions"
+          git config user.email "actions@github.com"
           git add manifest.json
           git commit -m "Bump version for ${{ github.event.inputs.service }} to ${{ steps.bump_version.outputs.version }}"
           git push origin ${{ github.event.inputs.branch }}
