@@ -1,0 +1,67 @@
+name: Create Service Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to release from'
+        required: true
+        default: 'main'
+      service:
+        description: 'Service to release'
+        required: true
+        type: choice
+        options:
+          - service1
+          - service2
+          - service3
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+
+      - name: Read and Update Version
+        id: bump_version
+        run: |
+          SERVICE="${{ github.event.inputs.service }}"
+          MANIFEST_FILE="manifest.json"
+          VERSION=$(jq -r ".services[\"${SERVICE}\"].version" $MANIFEST_FILE)
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+          NEW_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
+          jq ".services[\"${SERVICE}\"].version = \"$NEW_VERSION\"" $MANIFEST_FILE > temp.json && mv temp.json $MANIFEST_FILE
+          echo "New version: $NEW_VERSION"
+          echo "::set-output name=version::$NEW_VERSION"
+
+      - name: Commit Updated Manifest
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add manifest.json
+          git commit -m "Bump version for ${{ github.event.inputs.service }} to ${{ steps.bump_version.outputs.version }}"
+          git push origin ${{ github.event.inputs.branch }}
+
+      - name: Tag and Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
+        with:
+          tag_name: ${{ steps.bump_version.outputs.version }}
+          release_name: "Release ${{ steps.bump_version.outputs.version }} for ${{ github.event.inputs.service }}"
+          body: |
+            Release notes for ${{ github.event.inputs.service }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish to Artifactory
+        run: |
+          echo "Publishing ${{ github.event.inputs.service }} version ${{ steps.bump_version.outputs.version }} to Artifactory"
+          # Add your Artifactory CLI commands here
