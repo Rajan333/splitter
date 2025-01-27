@@ -47,32 +47,32 @@ jobs:
             -d '{"ref": "master"}')
           echo "Triggered Smoke Tests"
 
-        - name: Wait for Smoke Tests to Complete
-          id: wait_for_smoke_tests
-          run: |
-            echo "Waiting for Smoke Tests to complete..."
-            sleep 10 # Adjust the delay based on expected workflow runtime.
-            smoke_test_status="in_progress"
-            run_id=""
-            while [ "$smoke_test_status" == "in_progress" ] || [ -z "$run_id" ]; do
-              workflow_runs=$(curl -s \
-                -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-                -H "Accept: application/vnd.github.v3+json" \
-                https://api.github.com/repos/${{ github.repository }}/actions/runs)
-              run_id=$(echo "$workflow_runs" | jq -r '.workflow_runs[] | select(.name == "Run Smoke Tests") | .id' | head -n 1)
-              smoke_test_status=$(curl -s \
-                -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-                -H "Accept: application/vnd.github.v3+json" \
-                https://api.github.com/repos/${{ github.repository }}/actions/runs/$run_id \
-                | jq -r '.status')
-              echo "Current Status: $smoke_test_status"
-              if [ "$smoke_test_status" == "completed" ]; then
-                break
-              fi
-              sleep 5
-            done
-            echo "Smoke Tests Execution Completed."
-            echo "::set-output name=run_id::$run_id"
+      - name: Wait for Smoke Tests to Complete
+        id: wait_for_smoke_tests
+        run: |
+          echo "Waiting for Smoke Tests to complete..."
+          sleep 10 # Adjust the delay based on expected workflow runtime.
+          smoke_test_status="in_progress"
+          run_id=""
+          while [ "$smoke_test_status" == "in_progress" ] || [ -z "$run_id" ]; do
+            workflow_runs=$(curl -s \
+              -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+              -H "Accept: application/vnd.github.v3+json" \
+              https://api.github.com/repos/${{ github.repository }}/actions/runs)
+            run_id=$(echo "$workflow_runs" | jq -r '.workflow_runs[] | select(.name == "Run Smoke Tests") | .id' | head -n 1)
+            smoke_test_status=$(curl -s \
+              -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+              -H "Accept: application/vnd.github.v3+json" \
+              https://api.github.com/repos/${{ github.repository }}/actions/runs/$run_id \
+              | jq -r '.status')
+            echo "Current Status: $smoke_test_status"
+            if [ "$smoke_test_status" == "completed" ]; then
+              break
+            fi
+            sleep 5
+          done
+          echo "Smoke Tests Execution Completed."
+          echo "::set-output name=run_id::$run_id"
 
 
       # Step to process the JSON output
