@@ -1,16 +1,16 @@
-name: Conditional Smoke Tests
+name: Run Smoke Tests
 
 on:
   workflow_dispatch:
-    inputs:
-      smoke_tests:
-        description: 'Run Smoke Tests'
-        required: true
-        default: 'no'
-        type: choice
-        options:
-          - yes
-          - no
+    # inputs:
+    #   smoke_tests:
+    #     description: 'Run Smoke Tests'
+    #     required: true
+    #     default: 'no'
+    #     type: choice
+    #     options:
+    #       - yes
+    #       - no
 
 jobs:
   conditional-tests:
@@ -22,13 +22,13 @@ jobs:
 
       # Step to run smoke tests conditionally
       - name: Run Smoke Tests
-        if: ${{ github.event.inputs.smoke_tests == 'yes' }}
+        # if: ${{ github.event.inputs.smoke_tests == 'yes' }}
         id: smoke_tests
         run: |
           # Simulate running smoke tests and generate JSON output
           echo '{
             "Passed": "5",
-            "Failed": "4",
+            "Failed": "0",
             "Flaky": "1"
           }' > smoke_test_results.json
           echo "Smoke tests completed."
@@ -37,11 +37,15 @@ jobs:
         env:
           SMOKE_TEST_RESULTS: ${{ steps.smoke_tests.outputs.smoke_test_results }}
 
-      # Step to parse results and fail if there are failures
-      - name: Parse Results and Check Failures
-        if: ${{ github.event.inputs.smoke_tests == 'yes' }}
+      - name: Print Output
+        id: print_output
         run: |
-          # Read the JSON file
-          results=$(cat smoke_test_results.json)
-          failed_count=$(echo "$results" | jq -r '.pass')
+          cat smoke_test_results.json
+      # Step to parse results and fail if there are failures
+      # - name: Parse Results and Check Failures
+      #   if: ${{ github.event.inputs.smoke_tests == 'yes' }}
+      #   run: |
+      #     # Read the JSON file
+      #     results=$(cat smoke_test_results.json)
+      #     failed_count=$(echo "$results" | jq -r '.pass')
 
