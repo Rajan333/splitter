@@ -1,48 +1,54 @@
-name: Smoke Test Workflow
+name: Conditional Smoke Tests Workflow
 
 on:
   workflow_dispatch:
     inputs:
       smoke_tests:
-        description: 'Run smoke tests? (yes/no)'
+        description: 'Run Smoke Tests'
         required: true
         default: 'no'
+        type: choice
+        options:
+          - yes
+          - no
 
 jobs:
-  smoke_test_job:
+  smoke-tests-job:
     runs-on: ubuntu-latest
-    if: ${{ github.event.inputs.smoke_tests == 'yes' }}
+
     steps:
-      - name: Checkout code
+      - name: Checkout Repository
         uses: actions/checkout@v3
 
-      # Step to trigger tests in the repository
+      # Step to run smoke tests conditionally
       - name: Run Smoke Tests
-        id: run_tests
+        if: ${{ github.event.inputs.smoke_tests == 'yes' }}
+        id: run_smoke_tests
         run: |
-          # Simulating running smoke tests and generating JSON output
-          # Replace this with the actual command to run your tests
+          # Simulate running smoke tests and save the results to a JSON file
           echo '{
             "Passed": "5",
             "Failed": "4",
             "Flaky": "1"
-          }' > results.json
+          }' > smoke_test_results.json
+          echo "Smoke tests completed."
+          cat smoke_test_results.json
 
-      # Step to parse the JSON results
+      # Step to parse results and fail if there are failures
       - name: Parse Smoke Test Results
-        id: parse_results
+        if: ${{ github.event.inputs.smoke_tests == 'yes' }}
         run: |
-          RESULTS=$(cat results.json)
-          FAIL_COUNT=$(echo "$RESULTS" | jq -r '.Failed | tonumber')
-          echo "Fail count: $FAIL_COUNT"
-          echo "::set-output name=fail_count::$FAIL_COUNT"
-        env:
-          RESULTS_JSON: ${{ steps.run_tests.outputs.results }}
-        shell: bash
+          # Read and parse the JSON results
+          results=$(cat smoke_test_results.json)
+          failed_count=$(echo "$results" | jq -r '.Failed | tonumber')
 
-      # Step to fail the workflow if Failed > 0
-      - name: Fail workflow if tests failed
-        if: ${{ steps.parse_results.outputs.fail_count > 0 }}
-        run: |
-          echo "Smoke tests failed with ${FAIL_COUNT} failures."
-          exit 1
+          # Check if Failed count > 0
+          if [ "$failed_count" -gt 0 ]; then
+            echo "Smoke tests failed with $failed_count failures."
+            exit 1
+          else
+            echo "All smoke tests passed successfully!"
+          fi
+        env:
+          SMOKE_TEST_RESULTS: ${{ steps.run_smoke_tests.outputs.smoke_test_results }}
+
