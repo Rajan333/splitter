@@ -29,7 +29,7 @@ jobs:
           workflow_dispatch_response=$(curl -s -X POST \
             -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
             -H "Accept: application/vnd.github.v3+json" \
-            https://api.github.com/repos/${{ github.repository }}/actions/workflows/workflow-b.yml/dispatches \
+            https://api.github.com/repos/${{ github.repository }}/actions/workflows/smoke_test.yml/dispatches \
             -d '{"ref": "master"}')
           echo "Triggered Smoke Tests"
         
