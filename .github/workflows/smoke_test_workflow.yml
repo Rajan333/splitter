@@ -4,13 +4,16 @@ on:
   workflow_dispatch:
     inputs:
       smoke_tests:
-        description: 'Run Smoke Tests? (yes or no)'
+        description: 'Run Smoke Tests?'
         required: true
+        type: choice
+        options:
+          - yes
+          - no
         default: 'no'
 
 jobs:
-  run-smoke-tests:
-    if: ${{ github.event.inputs.smoke_tests == 'yes' }}
+  smoke-tests:
     runs-on: ubuntu-latest
 
     steps:
@@ -18,13 +21,23 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Step to trigger the tests
+      # Conditional step: Check if smoke tests should be run
+      - name: Check Input for Smoke Tests
+        id: check_input
+        run: |
+          if [ "${{ github.event.inputs.smoke_tests }}" != "yes" ]; then
+            echo "Smoke tests input is 'no', skipping the tests."
+            exit 0
+          fi
+          echo "Proceeding with smoke tests."
+
+      # Step to trigger smoke tests
       - name: Run Smoke Tests
         id: run_tests
         run: |
           echo "Running Smoke Tests..."
-          # Simulating the test JSON output
-          echo '{"Passed": "5", "Failed": "0", "Flaky": "1"}' > result.json
+          # Simulate creating the JSON output
+          echo '{"Passed": "5", "Failed": "4", "Flaky": "1"}' > result.json
 
       # Step to process the JSON output
       - name: Process Test Results
@@ -34,19 +47,23 @@ jobs:
           results=$(cat result.json)
           echo "Test results: $results"
 
-          # Extract the Failed key value
+          # Extract values from the JSON
+          passed=$(echo $results | jq -r '.Passed' | xargs)
           failed=$(echo $results | jq -r '.Failed' | xargs)
+          flaky=$(echo $results | jq -r '.Flaky' | xargs)
+
+          echo "Passed tests: $passed"
+          echo "Failed tests: $failed"
+          echo "Flaky tests: $flaky"
+
+          # Fail the workflow if there are failed tests
           if [ "$failed" -gt 0 ]; then
             echo "Test failed with $failed failed cases."
             exit 1
           fi
-          echo "All tests passed successfully."
+          echo "All smoke tests passed successfully."
 
-        # Install jq for JSON parsing
-        shell: bash
-        env:
-          SMOKE_TEST_RESULTS: ${{ steps.run_tests.outputs.json_output }}
-
-      - name: Skip Smoke Tests
-        if: ${{ github.event.inputs.smoke_tests != 'yes' }}
-        run: echo "Smoke tests not triggered as input was set to 'no'."
+      # Install jq for JSON parsing
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+        if: ${{ github.event.inputs.smoke_tests == 'yes' }}
