@@ -23,9 +23,8 @@ jobs:
         run: |
           if [ "${{ github.event.inputs.smoke_tests }}" != "yes" ]; then
             echo "Smoke tests input is 'no', skipping the tests."
-            exit 0
           fi
-          echo "Proceeding with smoke tests."
+          echo "Proceeding without smoke tests."
 
       # Step to trigger smoke tests
       - name: Run Smoke Tests
@@ -38,6 +37,7 @@ jobs:
 
       # Step to process the JSON output
       - name: Process Test Results
+        if: ${{ github.event.inputs.smoke_tests == 'yes' }}
         id: process_results
         run: |
           echo "Processing test results..."
