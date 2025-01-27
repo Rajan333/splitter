@@ -1,0 +1,48 @@
+name: Smoke Test Workflow
+
+on:
+  workflow_dispatch:
+    inputs:
+      smoke_tests:
+        description: 'Run smoke tests? (yes/no)'
+        required: true
+        default: 'no'
+
+jobs:
+  smoke_test_job:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.smoke_tests == 'yes' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Step to trigger tests in the repository
+      - name: Run Smoke Tests
+        id: run_tests
+        run: |
+          # Simulating running smoke tests and generating JSON output
+          # Replace this with the actual command to run your tests
+          echo '{
+            "Passed": "5",
+            "Failed": "4",
+            "Flaky": "1"
+          }' > results.json
+
+      # Step to parse the JSON results
+      - name: Parse Smoke Test Results
+        id: parse_results
+        run: |
+          RESULTS=$(cat results.json)
+          FAIL_COUNT=$(echo "$RESULTS" | jq -r '.Failed | tonumber')
+          echo "Fail count: $FAIL_COUNT"
+          echo "::set-output name=fail_count::$FAIL_COUNT"
+        env:
+          RESULTS_JSON: ${{ steps.run_tests.outputs.results }}
+        shell: bash
+
+      # Step to fail the workflow if Failed > 0
+      - name: Fail workflow if tests failed
+        if: ${{ steps.parse_results.outputs.fail_count > 0 }}
+        run: |
+          echo "Smoke tests failed with ${FAIL_COUNT} failures."
+          exit 1
