@@ -24,7 +24,7 @@ jobs:
         run: |
           echo "Running Smoke Tests..."
           # Simulating the test JSON output
-          echo '{"Passed": "5", "Failed": "4", "Flaky": "1"}' > result.json
+          echo '{"Passed": "5", "Failed": "0", "Flaky": "1"}' > result.json
 
       # Step to process the JSON output
       - name: Process Test Results
