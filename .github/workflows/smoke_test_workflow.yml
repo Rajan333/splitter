@@ -75,15 +75,19 @@ jobs:
           echo "::set-output name=output::$output"
 
       - name: Proceed Based on Smoke Tests Output
-        if: ${{ steps.wait_for_smoke_tests.outputs.output == 'success' }}
+        if: ${{ github.event.inputs.smoke_tests == 'true' }} && ${{ steps.wait_for_smoke_tests.outputs.output == 'success' }}
         run: |
           echo "Proceeding with Workflow A because Workflow B succeeded."
 
       - name: Fail if Smoke Tests are Fail
-        if: ${{ steps.wait_for_smoke_tests.outputs.output != 'success' }}
+        if: ${{ github.event.inputs.smoke_tests == 'true' }} && ${{ steps.wait_for_smoke_tests.outputs.output != 'success' }}
         run: |
           echo "Failing Workflow A because Workflow B failed."
           exit 1
+
+      - name: Print Final Status
+        run: |
+          echo "Job successfully completed"
 
       
       # # Step to parse results and fail if there are failures
