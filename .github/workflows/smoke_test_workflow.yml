@@ -28,7 +28,7 @@ jobs:
           # Simulate running smoke tests and save the results to a JSON file
           echo '{
             "Passed": "5",
-            "Failed": "4",
+            "Failed": "0",
             "Flaky": "1"
           }' > smoke_test_results.json
           echo "Smoke tests completed."
