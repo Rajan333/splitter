@@ -29,11 +29,12 @@ jobs:
 
       # Step to trigger smoke tests
       - name: Run Smoke Tests
+        if: ${{ github.event.inputs.smoke_tests == 'yes' }}
         id: run_tests
         run: |
           echo "Running Smoke Tests..."
           # Simulate creating the JSON output
-          echo '{"Passed": "5", "Failed": "4", "Flaky": "1"}' > result.json
+          echo '{"Passed": "5", "Failed": "0", "Flaky": "1"}' > result.json
 
       # Step to process the JSON output
       - name: Process Test Results
