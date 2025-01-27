@@ -27,27 +27,96 @@ jobs:
           echo "Proceeding without smoke tests."
 
       # Step to trigger smoke tests
+      # - name: Run Smoke Tests
+      #   if: ${{ github.event.inputs.smoke_tests == 'yes' }}
+      #   id: run_tests
+      #   run: |
+      #     echo "Running Smoke Tests..."
+      #     # Simulate creating the JSON output
+      #     echo '{"Passed": "5", "Failed": "0", "Flaky": "1"}' > result.json
+
       - name: Run Smoke Tests
         if: ${{ github.event.inputs.smoke_tests == 'yes' }}
         id: run_tests
         run: |
           echo "Running Smoke Tests..."
-          # Simulate creating the JSON output
-          echo '{"Passed": "5", "Failed": "0", "Flaky": "1"}' > result.json
+          workflow_dispatch_response=$(curl -s -X POST \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.repository }}/actions/workflows/smoke_test.yml/dispatches \
+            -d '{"ref": "master"}')
+          echo "Triggered Smoke Tests"
+
+        - name: Wait for Smoke Tests to Complete
+          id: wait_for_smoke_tests
+          run: |
+            echo "Waiting for Smoke Tests to complete..."
+            sleep 10 # Adjust the delay based on expected workflow runtime.
+            smoke_test_status="in_progress"
+            run_id=""
+            while [ "$smoke_test_status" == "in_progress" ] || [ -z "$run_id" ]; do
+              workflow_runs=$(curl -s \
+                -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+                -H "Accept: application/vnd.github.v3+json" \
+                https://api.github.com/repos/${{ github.repository }}/actions/runs)
+              run_id=$(echo "$workflow_runs" | jq -r '.workflow_runs[] | select(.name == "Run Smoke Tests") | .id' | head -n 1)
+              smoke_test_status=$(curl -s \
+                -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+                -H "Accept: application/vnd.github.v3+json" \
+                https://api.github.com/repos/${{ github.repository }}/actions/runs/$run_id \
+                | jq -r '.status')
+              echo "Current Status: $smoke_test_status"
+              if [ "$smoke_test_status" == "completed" ]; then
+                break
+              fi
+              sleep 5
+            done
+          echo "Smoke Tests Execution Completed."
+          echo "::set-output name=run_id::$run_id"
+
 
       # Step to process the JSON output
+      # - name: Process Test Results
+      #   if: ${{ github.event.inputs.smoke_tests == 'yes' }}
+      #   id: process_results
+      #   run: |
+      #     echo "Processing test results..."
+      #     results=$(cat result.json)
+      #     echo "Test results: $results"
+
+      #     # Extract values from the JSON
+      #     passed=$(echo $results | jq -r '.Passed' | xargs)
+      #     failed=$(echo $results | jq -r '.Failed' | xargs)
+      #     flaky=$(echo $results | jq -r '.Flaky' | xargs)
+
+      #     echo "Passed tests: $passed"
+      #     echo "Failed tests: $failed"
+      #     echo "Flaky tests: $flaky"
+
+      #     # Fail the workflow if there are failed tests
+      #     if [ "$failed" -gt 0 ]; then
+      #       echo "Test failed with $failed failed cases."
+      #       exit 1
+      #     fi
+      #     echo "All smoke tests passed successfully."
+
       - name: Process Test Results
         if: ${{ github.event.inputs.smoke_tests == 'yes' }}
         id: process_results
         run: |
-          echo "Processing test results..."
-          results=$(cat result.json)
-          echo "Test results: $results"
+          echo "Fetching output of Smoke Tests"
+          output=$(curl -s \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ steps.wait_for_smoke_tests.outputs.run_id }}/jobs \
+            | jq -r '.jobs[0].steps[] | select(.name == "Print Output") | .output')
+          echo "Output from Smoke Tests: $output"
+          echo "::set-output name=output::$output"
 
           # Extract values from the JSON
-          passed=$(echo $results | jq -r '.Passed' | xargs)
-          failed=$(echo $results | jq -r '.Failed' | xargs)
-          flaky=$(echo $results | jq -r '.Flaky' | xargs)
+          passed=$(echo $output | jq -r '.Passed' | xargs)
+          failed=$(echo $output | jq -r '.Failed' | xargs)
+          flaky=$(echo $output | jq -r '.Flaky' | xargs)
 
           echo "Passed tests: $passed"
           echo "Failed tests: $failed"
@@ -59,6 +128,7 @@ jobs:
             exit 1
           fi
           echo "All smoke tests passed successfully."
+
 
       # Install jq for JSON parsing
       - name: Install jq
