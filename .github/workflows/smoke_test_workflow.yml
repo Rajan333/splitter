@@ -4,12 +4,8 @@ on:
   workflow_dispatch:
     inputs:
       smoke_tests:
-        description: 'Run Smoke Tests?'
+        description: 'Run Smoke Tests? (yes or no)'
         required: true
-        type: choice
-        options:
-          - yes
-          - no
         default: 'no'
 
 jobs:
