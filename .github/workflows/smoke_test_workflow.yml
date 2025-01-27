@@ -47,10 +47,6 @@ jobs:
         env:
           SMOKE_TEST_RESULTS: ${{ steps.run_tests.outputs.json_output }}
 
-  skip-smoke-tests:
-    if: ${{ github.event.inputs.smoke_tests != 'yes' }}
-    runs-on: ubuntu-latest
-
-    steps:
       - name: Skip Smoke Tests
+        if: ${{ github.event.inputs.smoke_tests != 'yes' }}
         run: echo "Smoke tests not triggered as input was set to 'no'."
