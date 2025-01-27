@@ -43,5 +43,5 @@ jobs:
         run: |
           # Read the JSON file
           results=$(cat smoke_test_results.json)
-          failed_count=$(echo "$results" | jq -r '.pass)
-Result Display JSON
+          failed_count=$(echo "$results" | jq -r '.pass')
+
