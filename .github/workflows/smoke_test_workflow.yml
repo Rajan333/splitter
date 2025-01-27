@@ -1,15 +1,17 @@
 name: Conditional Smoke Tests Workflow
+
 on:
   workflow_dispatch:
     inputs:
       smoke_tests:
         description: 'Run Smoke Tests'
         required: true
-        default: 'no'
+        default: 'false'
         type: choice
         options:
-          - yes
-          - no
+          - true
+          - false
+
 jobs:
   smoke-tests-job:
     runs-on: ubuntu-latest
@@ -20,7 +22,7 @@ jobs:
 
       # Step to run smoke tests conditionally
       - name: Run Smoke Tests
-        if: ${{ github.event.inputs.smoke_tests == 'yes' }}
+        if: ${{ github.event.inputs.smoke_tests == 'true' }}
         id: run_smoke_tests
         run: |
           # Simulate running smoke tests and save the results to a JSON file
@@ -34,7 +36,7 @@ jobs:
 
       # Step to parse results and fail if there are failures
       - name: Parse Smoke Test Results
-        if: ${{ github.event.inputs.smoke_tests == 'yes' }}
+        if: ${{ github.event.inputs.smoke_tests == 'true' }}
         run: |
           # Read and parse the JSON results
           results=$(cat smoke_test_results.json)
@@ -47,6 +49,3 @@ jobs:
           else
             echo "All smoke tests passed successfully!"
           fi
-        env:
-          SMOKE_TEST_RESULTS: ${{ steps.run_smoke_tests.outputs.smoke_test_results }}
-
