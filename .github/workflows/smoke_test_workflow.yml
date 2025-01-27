@@ -1,107 +1,56 @@
-name: Conditional Smoke Tests Workflow
+name: Smoke Tests Workflow
 
 on:
   workflow_dispatch:
     inputs:
       smoke_tests:
-        description: 'Run Smoke Tests'
+        description: 'Run Smoke Tests? (yes or no)'
         required: true
-        default: 'false'
-        type: choice
-        options:
-          - true
-          - false
+        default: 'no'
 
 jobs:
-  smoke-tests-job:
+  run-smoke-tests:
+    if: ${{ github.event.inputs.smoke_tests == 'yes' }}
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
+      # Checkout the repository
+      - name: Checkout code
         uses: actions/checkout@v3
 
-      # Step to run smoke tests conditionally
+      # Step to trigger the tests
       - name: Run Smoke Tests
-        if: ${{ github.event.inputs.smoke_tests == 'true' }}
-        id: run_smoke_tests
+        id: run_tests
         run: |
-          echo "Triggering Smoke Tests..."
-          workflow_dispatch_response=$(curl -s -X POST \
-            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Accept: application/vnd.github.v3+json" \
-            https://api.github.com/repos/${{ github.repository }}/actions/workflows/smoke_test.yml/dispatches \
-            -d '{"ref": "master"}')
-          echo "Triggered Smoke Tests"
-        
-      - name: Wait for Smoke Tests to Complete
-        if: ${{ github.event.inputs.smoke_tests == 'true' }}
-        id: wait_for_smoke_tests
+          echo "Running Smoke Tests..."
+          # Simulating the test JSON output
+          echo '{"Passed": "5", "Failed": "4", "Flaky": "1"}' > result.json
+
+      # Step to process the JSON output
+      - name: Process Test Results
+        id: process_results
         run: |
-          echo "Waiting for Smoke Tests to complete..."
-          sleep 10
-          smoke_test_status="in_progress"
-          run_id=""
-          while [ "$smoke_test_status" == "in_progress" ] || [ -z "$run_id" ]; do
-            workflow_runs=$(curl -s \
-              -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-              -H "Accept: application/vnd.github.v3+json" \
-              https://api.github.com/repos/${{ github.repository }}/actions/runs)
-            run_id=$(echo "$workflow_runs" | jq -r '.workflow_runs[] | select(.name == "Run Smoke Tests") | .id' | head -n 1)
-            smoke_test_status=$(curl -s \
-              -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-              -H "Accept: application/vnd.github.v3+json" \
-              https://api.github.com/repos/${{ github.repository }}/actions/runs/$run_id \
-              | jq -r '.status')
-            echo "Current Status: $smoke_test_status"
-            if [ "$smoke_test_status" == "completed" ]; then
-              break
-            fi
-            sleep 5
-          done
-          echo "Smoke Tests Completed."
-          echo "::set-output name=run_id::$run_id"
+          echo "Processing test results..."
+          results=$(cat result.json)
+          echo "Test results: $results"
 
-      - name: Get Output of Smoke Tests
-        if: ${{ github.event.inputs.smoke_tests == 'true' }}
-        id: smoke_tests_output
-        run: |
-          echo "Fetching output of Smoke Tests..."
-          output=$(curl -s \
-            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Accept: application/vnd.github.v3+json" \
-            https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ steps.wait_for_smoke_tests.outputs.run_id }}/jobs \
-            | jq -r '.jobs[0].steps[] | select(.name == "Generate Output") | .output')
-          echo "Output from Smoke Tests: $output"
-          echo "::set-output name=output::$output"
+          # Extract the Failed key value
+          failed=$(echo $results | jq -r '.Failed' | xargs)
+          if [ "$failed" -gt 0 ]; then
+            echo "Test failed with $failed failed cases."
+            exit 1
+          fi
+          echo "All tests passed successfully."
 
-      - name: Proceed Based on Smoke Tests Output
-        if: ${{ github.event.inputs.smoke_tests == 'true' }} && ${{ steps.wait_for_smoke_tests.outputs.output == 'success' }}
-        run: |
-          echo "Proceeding with Workflow A because Workflow B succeeded."
+        # Install jq for JSON parsing
+        shell: bash
+        env:
+          SMOKE_TEST_RESULTS: ${{ steps.run_tests.outputs.json_output }}
 
-      - name: Fail if Smoke Tests are Fail
-        if: ${{ github.event.inputs.smoke_tests == 'true' }} && ${{ steps.wait_for_smoke_tests.outputs.output != 'success' }}
-        run: |
-          echo "Failing Workflow A because Workflow B failed."
-          exit 1
+  skip-smoke-tests:
+    if: ${{ github.event.inputs.smoke_tests != 'yes' }}
+    runs-on: ubuntu-latest
 
-      - name: Print Final Status
-        run: |
-          echo "Job successfully completed"
-
-      
-      # # Step to parse results and fail if there are failures
-      # - name: Parse Smoke Test Results
-      #   if: ${{ github.event.inputs.smoke_tests == 'true' }}
-      #   run: |
-      #     # Read and parse the JSON results
-      #     results=$(cat smoke_test_results.json)
-      #     failed_count=$(echo "$results" | jq -r '.Failed | tonumber')
-
-      #     # Check if Failed count > 0
-      #     if [ "$failed_count" -gt 0 ]; then
-      #       echo "Smoke tests failed with $failed_count failures."
-      #       exit 1
-      #     else
-      #       echo "All smoke tests passed successfully!"
-      #     fi
+    steps:
+      - name: Skip Smoke Tests
+        run: echo "Smoke tests not triggered as input was set to 'no'."
