@@ -71,8 +71,8 @@ jobs:
               fi
               sleep 5
             done
-          echo "Smoke Tests Execution Completed."
-          echo "::set-output name=run_id::$run_id"
+            echo "Smoke Tests Execution Completed."
+            echo "::set-output name=run_id::$run_id"
 
 
       # Step to process the JSON output
