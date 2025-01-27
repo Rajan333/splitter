@@ -1,5 +1,4 @@
 name: Conditional Smoke Tests Workflow
-
 on:
   workflow_dispatch:
     inputs:
@@ -11,7 +10,6 @@ on:
         options:
           - yes
           - no
-
 jobs:
   smoke-tests-job:
     runs-on: ubuntu-latest
