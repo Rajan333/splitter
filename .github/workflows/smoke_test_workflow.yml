@@ -34,6 +34,7 @@ jobs:
           echo "Triggered Smoke Tests"
         
       - name: Wait for Smoke Tests to Complete
+        if: ${{ github.event.inputs.smoke_tests == 'true' }}
         id: wait_for_smoke_tests
         run: |
           echo "Waiting for Smoke Tests to complete..."
