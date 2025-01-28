@@ -124,7 +124,7 @@ jobs:
           asset_name: release-${{ github.event.inputs.service }}-${{ steps.bump_version.outputs.version }}.zip
           tag: ${{ github.ref }}
           overwrite: true
-          body: "This is my release text"`
+          body: "This is my release text"
 
       # - name: Tag and Create GitHub Release
       #   id: create_release
