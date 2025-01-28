@@ -45,19 +45,29 @@ jobs:
         run: |
           git config user.name "Github Actions"
           git config user.email "actions@github.com"
+          
+          # Create a new branch for the release
+          RELEASE_BRANCH="feature/release-${{ github.event.inputs.service }}-${{ steps.bump_version.outputs.version }}"
+          git checkout -b $RELEASE_BRANCH
+          
+          # Commit the changes
           git add manifest.json
           git commit -m "Bump version for ${{ github.event.inputs.service }} to ${{ steps.bump_version.outputs.version }}"
-          git push origin "feature/release-${{ github.event.inputs.service }}-${{ steps.bump_version.outputs.version }}"
-
+          
+          # Push the new branch to origin
+          git push origin $RELEASE_BRANCH
+          
           # Create a pull request
           PR_URL=$(gh pr create --title "Release ${{ steps.bump_version.outputs.version }}" \
             --body "Bump version for ${{ github.event.inputs.service }}" \
             --base ${{ github.event.inputs.branch }} \
-            --head "feature/release-${{ github.event.inputs.service }}-${{ steps.bump_version.outputs.version }}")
+            --head $RELEASE_BRANCH)
+            
           echo "::set-output name=pr_url::$PR_URL"
 
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
 
       - name: Wait for PR Approval and Merge
         uses: actions/github-script@v6
