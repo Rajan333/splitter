@@ -99,20 +99,12 @@ jobs:
       - name: Retain Only Selected Service Directory
         run: |
           SERVICE="${{ github.event.inputs.service }}"
-          TEMP_DIR="temp_release"
-
-          # Create a temporary directory for the selected service
-          mkdir -p $TEMP_DIR
-          cp -r $SERVICE $TEMP_DIR/
-
-          # Clean up the repository (remove everything except .git)
+          
+          # Remove all files and directories except the selected service and .git folder
           find . -mindepth 1 -maxdepth 1 \
+            ! -name "$SERVICE" \
             ! -name ".git" \
             -exec rm -rf {} +
-
-          # Move the selected service back to the repo root
-          mv $TEMP_DIR/$SERVICE .
-          rm -rf $TEMP_DIR
           echo "Retained only the $SERVICE directory."
 
       - name: Prepare Release Package
@@ -120,7 +112,7 @@ jobs:
           SERVICE="${{ github.event.inputs.service }}"
           RELEASE_ZIP="release-${SERVICE}-${{ steps.bump_version.outputs.version }}.zip"
 
-          # Create a ZIP file with only the selected service directory
+          # Create a ZIP file for the selected service directory
           zip -r $RELEASE_ZIP $SERVICE
           echo "Created release package: $RELEASE_ZIP"
 
@@ -138,7 +130,6 @@ jobs:
             release-${{ github.event.inputs.service }}-${{ steps.bump_version.outputs.version }}.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
 
 
       - name: Publish to Artifactory
