@@ -1,12 +1,12 @@
 {
   "services": {
-    "service1": {
+    "attribution-service": {
       "version": "1.0.3"
     },
-    "service2": {
+    "deployment-service": {
       "version": "2.3.4"
     },
-    "service3": {
+    "dummy-service": {
       "version": "0.9.8"
     }
   }
