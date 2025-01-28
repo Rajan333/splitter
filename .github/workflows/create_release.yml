@@ -115,21 +115,31 @@ jobs:
           # Create a ZIP file for the selected service directory
           zip -r $RELEASE_ZIP $SERVICE
           echo "Created release package: $RELEASE_ZIP"
+      
+    - name: Upload binaries to release
+      uses: svenstaro/upload-release-action@v2
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        file: release-${{ github.event.inputs.service }}-${{ steps.bump_version.outputs.version }}.zip
+        asset_name: release-${{ github.event.inputs.service }}-${{ steps.bump_version.outputs.version }}.zip
+        tag: ${{ github.ref }}
+        overwrite: true
+        body: "This is my release text"
 
-      - name: Tag and Create GitHub Release
-        id: create_release
-        uses: actions/create-release@v1
-        with:
-          tag_name: ${{ steps.bump_version.outputs.version }}
-          release_name: "Release ${{ steps.bump_version.outputs.version }} for ${{ github.event.inputs.service }}"
-          body: |
-            Release notes for ${{ github.event.inputs.service }}
-          draft: false
-          prerelease: false
-          files: |
-            release-${{ github.event.inputs.service }}-${{ steps.bump_version.outputs.version }}.zip
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # - name: Tag and Create GitHub Release
+      #   id: create_release
+      #   uses: actions/create-release@v1
+      #   with:
+      #     tag_name: ${{ steps.bump_version.outputs.version }}
+      #     release_name: "Release ${{ steps.bump_version.outputs.version }} for ${{ github.event.inputs.service }}"
+      #     body: |
+      #       Release notes for ${{ github.event.inputs.service }}
+      #     draft: false
+      #     prerelease: false
+      #     files: |
+      #       release-${{ github.event.inputs.service }}-${{ steps.bump_version.outputs.version }}.zip
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 
       - name: Publish to Artifactory
