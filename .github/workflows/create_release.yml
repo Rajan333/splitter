@@ -40,13 +40,57 @@ jobs:
           echo "New version: $NEW_VERSION"
           echo "::set-output name=version::$NEW_VERSION"
 
-      - name: Commit Updated Manifest
+      - name: Commit Updated Manifest and Create PR
+        id: create_pr
         run: |
           git config user.name "Github Actions"
           git config user.email "actions@github.com"
           git add manifest.json
           git commit -m "Bump version for ${{ github.event.inputs.service }} to ${{ steps.bump_version.outputs.version }}"
-          git push origin ${{ github.event.inputs.branch }}
+          git push origin "feature/release-${{ github.event.inputs.service }}-${{ steps.bump_version.outputs.version }}"
+
+          # Create a pull request
+          PR_URL=$(gh pr create --title "Release ${{ steps.bump_version.outputs.version }}" \
+            --body "Bump version for ${{ github.event.inputs.service }}" \
+            --base ${{ github.event.inputs.branch }} \
+            --head "feature/release-${{ github.event.inputs.service }}-${{ steps.bump_version.outputs.version }}")
+          echo "::set-output name=pr_url::$PR_URL"
+
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Wait for PR Approval and Merge
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const prUrl = "${{ steps.create_pr.outputs.pr_url }}";
+            const prNumber = prUrl.split('/').pop();
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber,
+            });
+
+            while (pr.state !== 'closed') {
+              console.log('Waiting for PR to be merged...');
+              await new Promise(r => setTimeout(r, 60000)); // Wait 1 minute
+              const { data: updatedPr } = await github.rest.pulls.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: prNumber,
+              });
+              pr.state = updatedPr.state;
+            }
+            console.log('PR merged.');
+
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Retain Only Selected Service Directory
+        run: |
+          SERVICE="${{ github.event.inputs.service }}"
+          find . -mindepth 1 -maxdepth 1 -type d ! -name "$SERVICE" -exec rm -rf {} +
+          echo "Retained only $SERVICE directory."
 
       - name: Tag and Create GitHub Release
         id: create_release
