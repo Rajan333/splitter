@@ -106,6 +106,8 @@ jobs:
         id: process_results
         run: |
           echo "Fetching output of Smoke Tests"
+          echo "Github Repo: ${{ github.repository }}"
+          echo "RunID: ${{ steps.wait_for_smoke_tests.outputs.run_id }}"
           output=$(curl -s \
             -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
             -H "Accept: application/vnd.github.v3+json" \
