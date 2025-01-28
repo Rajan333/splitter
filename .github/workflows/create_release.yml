@@ -12,9 +12,9 @@ on:
         required: true
         type: choice
         options:
-          - service1
-          - service2
-          - service3
+          - attribution-service
+          - deployment-service
+          - dummy-service
 
 jobs:
   release:
