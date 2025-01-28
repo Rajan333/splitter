@@ -122,6 +122,7 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: release-${{ github.event.inputs.service }}-${{ steps.bump_version.outputs.version }}.zip
           asset_name: release-${{ github.event.inputs.service }}-${{ steps.bump_version.outputs.version }}.zip
+          release_name: release-${{ github.event.inputs.service }}-${{ steps.bump_version.outputs.version }}
           tag: ${{ github.event.inputs.service }}-${{ steps.bump_version.outputs.version }}
           overwrite: true
           body: "Release notes for ${{ github.event.inputs.service }}"
