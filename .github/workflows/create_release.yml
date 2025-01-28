@@ -99,26 +99,22 @@ jobs:
       - name: Retain Only Selected Service Directory
         run: |
           SERVICE="${{ github.event.inputs.service }}"
-          find . -mindepth 1 -maxdepth 1 -type d ! -name "$SERVICE" -exec rm -rf {} +
-          echo "Retained only $SERVICE directory."
-      
+          
+          # Remove all files and directories except the selected service and .git folder
+          find . -mindepth 1 -maxdepth 1 \
+            ! -name "$SERVICE" \
+            ! -name ".git" \
+            -exec rm -rf {} +
+          echo "Retained only the $SERVICE directory."
+
       - name: Prepare Release Package
         run: |
           SERVICE="${{ github.event.inputs.service }}"
-          RELEASE_FOLDER="release-${SERVICE}-${{ steps.bump_version.outputs.version }}"
+          RELEASE_ZIP="release-${SERVICE}-${{ steps.bump_version.outputs.version }}.zip"
 
-          # Create a directory for the release package
-          mkdir $RELEASE_FOLDER
-
-          # Copy the selected service folder to the release package
-          cp -r $SERVICE $RELEASE_FOLDER/
-
-          # Optionally add other necessary files (e.g., manifest.json, README.md)
-          cp manifest.json $RELEASE_FOLDER/
-
-          # Create a ZIP file for the release
-          zip -r "${RELEASE_FOLDER}.zip" $RELEASE_FOLDER
-          echo "Created release package: ${RELEASE_FOLDER}.zip"
+          # Create a ZIP file for the selected service directory
+          zip -r $RELEASE_ZIP $SERVICE
+          echo "Created release package: $RELEASE_ZIP"
 
       - name: Tag and Create GitHub Release
         id: create_release
@@ -134,6 +130,7 @@ jobs:
             release-${{ github.event.inputs.service }}-${{ steps.bump_version.outputs.version }}.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
 
       - name: Publish to Artifactory
         run: |
