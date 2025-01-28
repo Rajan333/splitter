@@ -116,15 +116,15 @@ jobs:
           zip -r $RELEASE_ZIP $SERVICE
           echo "Created release package: $RELEASE_ZIP"
       
-      - name: Upload binaries to release
+      - name: Tag and Create GitHub Release
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: release-${{ github.event.inputs.service }}-${{ steps.bump_version.outputs.version }}.zip
           asset_name: release-${{ github.event.inputs.service }}-${{ steps.bump_version.outputs.version }}.zip
-          tag: ${{ github.ref }}
+          tag: ${{ github.event.inputs.service }}-${{ steps.bump_version.outputs.version }}
           overwrite: true
-          body: "This is my release text"
+          body: "Release notes for ${{ github.event.inputs.service }}"
 
       # - name: Tag and Create GitHub Release
       #   id: create_release
