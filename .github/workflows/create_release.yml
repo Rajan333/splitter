@@ -112,6 +112,8 @@ jobs:
             Release notes for ${{ github.event.inputs.service }}
           draft: false
           prerelease: false
+          files: |
+            ${{ github.event.inputs.service }}/**
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
