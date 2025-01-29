@@ -1,4 +1,4 @@
-name: Workflow A - Trigger and Process Output from Workflow B
+name: Workflow A - Trigger and Fetch Output from Workflow B
 
 on:
   workflow_dispatch:
@@ -19,14 +19,14 @@ jobs:
             -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
             -H "Accept: application/vnd.github.v3+json" \
             "https://api.github.com/repos/${{ github.repository }}/actions/workflows/workflow-b.yml/dispatches" \
-            -d '{"ref": "master"}'
+            -d '{"ref": "main"}'
           echo "Workflow B triggered."
 
       - name: Wait for Workflow B to Complete
         id: wait_for_b
         run: |
           echo "Waiting for Workflow B to complete..."
-          sleep 10 # Adjust the delay based on expected runtime.
+          sleep 10
 
           while true; do
             workflow_runs=$(curl -s \
@@ -34,7 +34,7 @@ jobs:
               -H "Accept: application/vnd.github.v3+json" \
               "https://api.github.com/repos/${{ github.repository }}/actions/runs")
 
-            run_id=$(echo "$workflow_runs" | jq -r '.workflow_runs[] | select(.name == "Output Results") | .id' | head -n 1)
+            run_id=$(echo "$workflow_runs" | jq -r '.workflow_runs[] | select(.name == "Workflow B") | .id' | head -n 1)
 
             if [ -z "$run_id" ]; then
               echo "No recent Workflow B runs found. Retrying..."
@@ -58,24 +58,30 @@ jobs:
             sleep 5
           done
 
-      - name: Fetch JSON Output from Workflow B
-        id: fetch_results
+      - name: Download Artifact from Workflow B
+        id: download_artifact
         run: |
-          echo "Fetching JSON output from Workflow B..."
-          output=$(curl -s \
+          echo "Fetching Artifact from Workflow B..."
+
+          # Fetch Workflow B Run ID
+          run_id=${{ steps.wait_for_b.outputs.run_id }}
+
+          # Get Artifact URL
+          artifacts_url=$(curl -s \
             -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
             -H "Accept: application/vnd.github.v3+json" \
-            "https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ steps.wait_for_b.outputs.run_id }}/jobs" \
-            | jq -r '.jobs[].steps[] | select(.name == "Output Results") | .output')
+            "https://api.github.com/repos/${{ github.repository }}/actions/runs/$run_id/artifacts" \
+            | jq -r '.artifacts[] | select(.name=="test-results") | .archive_download_url')
 
-          if [ -z "$output" ]; then
-            echo "Failed to fetch output from Workflow B"
+          if [ -z "$artifacts_url" ]; then
+            echo "Artifact not found!"
             exit 1
           fi
 
-          echo "Workflow B JSON Output: $output"
-          echo "$output" > results.json
-          echo "::set-output name=json_output::$output"
+          # Download and Extract Artifact
+          curl -sL -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" -o artifact.zip "$artifacts_url"
+          unzip artifact.zip
+          cat results.json
 
       - name: Parse JSON and Print Failed & Flaky Values
         run: |
