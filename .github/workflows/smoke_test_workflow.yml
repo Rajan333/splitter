@@ -26,15 +26,6 @@ jobs:
           fi
           echo "Proceeding without smoke tests."
 
-      # Step to trigger smoke tests
-      # - name: Run Smoke Tests
-      #   if: ${{ github.event.inputs.smoke_tests == 'yes' }}
-      #   id: run_tests
-      #   run: |
-      #     echo "Running Smoke Tests..."
-      #     # Simulate creating the JSON output
-      #     echo '{"Passed": "5", "Failed": "0", "Flaky": "1"}' > result.json
-
       - name: Run Smoke Tests
         if: ${{ github.event.inputs.smoke_tests == 'yes' }}
         id: run_tests
@@ -75,7 +66,6 @@ jobs:
           echo "Smoke Tests Execution Completed."
           echo "::set-output name=run_id::$run_id"
 
-
       # Step to process the JSON output
       # - name: Process Test Results
       #   if: ${{ github.event.inputs.smoke_tests == 'yes' }}
@@ -99,35 +89,7 @@ jobs:
       #       echo "Test failed with $failed failed cases."
       #       exit 1
       #     fi
-      #     echo "All smoke tests passed successfully."
-
-      - name: Fetch Artifact from Workflow B
-        uses: actions/download-artifact@v3
-        with:
-          name: smoke-test-results
-          path: ./
-
-      - name: Read and Use Output
-        run: |
-          RESULT=$(cat smoke_test_results.json)
-          echo "Output from Workflow B: $RESULT"
-
-           # Extract values from the JSON
-          passed=$(echo $output | jq -r '.Passed' | xargs)
-          failed=$(echo $output | jq -r '.Failed' | xargs)
-          flaky=$(echo $output | jq -r '.Flaky' | xargs)
-
-          echo "Passed tests: $passed"
-          echo "Failed tests: $failed"
-          echo "Flaky tests: $flaky"
-
-          # Fail the workflow if there are failed tests
-          if [ "$failed" -gt 0 ]; then
-            echo "Test failed with $failed failed cases."
-            exit 1
-          fi
-          echo "All smoke tests passed successfully."
-          
+      #     echo "All smoke tests passed successfully."          
           
       - name: Process Test Results
         if: ${{ github.event.inputs.smoke_tests == 'yes' }}
