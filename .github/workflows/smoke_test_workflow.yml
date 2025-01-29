@@ -89,7 +89,20 @@ jobs:
       #       echo "Test failed with $failed failed cases."
       #       exit 1
       #     fi
-      #     echo "All smoke tests passed successfully."          
+      #     echo "All smoke tests passed successfully."    
+
+      - name: Fetch Artifact from Workflow B
+        uses: actions/download-artifact@v3
+        with:
+          name: smoke-test-results
+          path: ./
+
+      - name: Read and Use Output
+        run: |
+          RESULT=$(cat smoke-test-results.json)
+          echo "----------------------------------"
+          echo "Output from Workflow B: $RESULT"
+          echo "----------------------------------"
           
       - name: Process Test Results
         if: ${{ github.event.inputs.smoke_tests == 'yes' }}
