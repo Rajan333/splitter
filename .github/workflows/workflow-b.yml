@@ -1,15 +1,27 @@
-name: Workflow B - Generate Output
+name: Workflow B - Generate Test Results
 
 on:
-  workflow_dispatch:  # This allows it to be triggered from Workflow A
+  workflow_dispatch:
 
 jobs:
-  generate_output:
+  generate-results:
     runs-on: ubuntu-latest
-    outputs:
-      smoke_test_result: ${{ steps.smoke_test_step.outputs.result }}
+
     steps:
-      - name: Generate Output
-        id: smoke_test_step
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Generate Test Results
+        id: test_results
         run: |
-          echo "::set-output name=result::All smoke tests passed successfully!"
+          echo '{
+            "Passed": "5",
+            "Failed": "1",
+            "Flaky": "1"
+          }' > results.json
+
+      - name: Output Results
+        id: output_results
+        run: |
+          results=$(cat results.json)
+          echo "::set-output name=results::$results"
