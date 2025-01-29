@@ -1,52 +1,87 @@
-name: Workflow A - Trigger and Process Output
+name: Workflow A - Trigger and Process Output from Workflow B
 
 on:
-  workflow_dispatch:  # Manually triggered
+  workflow_dispatch:
 
 jobs:
-  trigger_and_wait:
+  trigger-and-fetch-results:
     runs-on: ubuntu-latest
+
     steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
       - name: Trigger Workflow B
         id: trigger_b
         run: |
-          curl -X POST -H "Accept: application/vnd.github.v3+json" \
+          echo "Triggering Workflow B..."
+          curl -X POST -s \
             -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            https://api.github.com/repos/${{ github.repository }}/actions/workflows/workflow-b.yml/dispatches \
-            -d '{"ref": "master"}'
-
-          echo "Triggered Workflow B"
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/workflow-b.yml/dispatches" \
+            -d '{"ref": "main"}'
+          echo "Workflow B triggered."
 
       - name: Wait for Workflow B to Complete
-        id: wait_b
+        id: wait_for_b
         run: |
-          sleep 30  # Wait to let Workflow B start
-
-          # Fetch the latest run ID of Workflow B
-          RUN_ID=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/repos/${{ github.repository }}/actions/runs?event=workflow_dispatch" | \
-            jq -r '.workflow_runs[] | select(.name=="Workflow B - Generate Output") | .id' | head -n 1)
-
-          echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV
+          echo "Waiting for Workflow B to complete..."
+          sleep 10 # Adjust the delay based on expected runtime.
 
           while true; do
-            STATUS=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-              "https://api.github.com/repos/${{ github.repository }}/actions/runs/$RUN_ID" | \
-              jq -r '.status')
+            workflow_runs=$(curl -s \
+              -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+              -H "Accept: application/vnd.github.v3+json" \
+              "https://api.github.com/repos/${{ github.repository }}/actions/runs")
 
-            if [[ "$STATUS" == "completed" ]]; then
+            run_id=$(echo "$workflow_runs" | jq -r '.workflow_runs[] | select(.name == "Workflow B") | .id' | head -n 1)
+
+            if [ -z "$run_id" ]; then
+              echo "No recent Workflow B runs found. Retrying..."
+              sleep 5
+              continue
+            fi
+
+            status=$(curl -s \
+              -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+              -H "Accept: application/vnd.github.v3+json" \
+              "https://api.github.com/repos/${{ github.repository }}/actions/runs/$run_id" \
+              | jq -r '.status')
+
+            echo "Workflow B Status: $status"
+
+            if [ "$status" == "completed" ]; then
+              echo "::set-output name=run_id::$run_id"
               break
             fi
-            echo "Waiting for Workflow B to complete..."
-            sleep 15
+
+            sleep 5
           done
 
-      - name: Fetch Output from Workflow B
-        id: fetch_output
+      - name: Fetch JSON Output from Workflow B
+        id: fetch_results
         run: |
-          OUTPUT=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/repos/${{ github.repository }}/actions/runs/$RUN_ID" | \
-            jq -r '.jobs[].steps[] | select(.name=="Generate Output").outputs.smoke_test_result')
+          echo "Fetching JSON output from Workflow B..."
+          output=$(curl -s \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ steps.wait_for_b.outputs.run_id }}/jobs" \
+            | jq -r '.jobs[].steps[] | select(.name == "Output Results") | .output')
 
-          echo "Output from Workflow B: $OUTPUT"
-          echo "::set-output name=smoke_test_result::$OUTPUT"
+          if [ -z "$output" ]; then
+            echo "Failed to fetch output from Workflow B"
+            exit 1
+          fi
+
+          echo "Workflow B JSON Output: $output"
+          echo "$output" > results.json
+          echo "::set-output name=json_output::$output"
+
+      - name: Parse JSON and Print Failed & Flaky Values
+        run: |
+          echo "Parsing JSON output..."
+          failed_count=$(jq -r '.Failed' results.json)
+          flaky_count=$(jq -r '.Flaky' results.json)
+
+          echo "Failed Test Count: $failed_count"
+          echo "Flaky Test Count: $flaky_count"
