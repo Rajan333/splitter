@@ -112,7 +112,7 @@ jobs:
             *Flaky:* ${{ steps.parse_results.outputs.flaky }} ⚠️\n
             *Repository:* ${{ github.repository }}\n
             *Triggered by:* ${{ github.actor }}"
-          }' https://hooks.slack.com/services/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
+          }' https://hooks.slack.com/services/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
 
       - name: Fail Workflow if Failed > 0
         if: ${{ steps.parse_results.outputs.failed > 0 }}
