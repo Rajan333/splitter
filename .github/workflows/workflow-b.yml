@@ -20,8 +20,8 @@ jobs:
             "Flaky": "1"
           }' > results.json
 
-      - name: Output Results
-        id: output_results
-        run: |
-          results=$(cat results.json)
-          echo "::set-output name=results::$results"
+      - name: Upload Test Results as Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-results
+          path: results.json
