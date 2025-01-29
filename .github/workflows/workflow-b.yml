@@ -1,4 +1,4 @@
-name: Workflow B - Generate Test Results
+name: Workflow B
 
 on:
   workflow_dispatch:
