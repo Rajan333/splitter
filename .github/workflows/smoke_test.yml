@@ -37,12 +37,18 @@ jobs:
         env:
           SMOKE_TEST_RESULTS: ${{ steps.smoke_tests.outputs.smoke_test_results }}
 
-      - name: Print Output
-        id: print_output
-        run: |
-          result=$(cat smoke_test_results.json)
-          echo "Smoke Test Result: $result"
-          echo "::set-output name=result::$result"
+      - name: Upload Output as Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: smoke-test-results
+          path: smoke_test_results.json
+          
+      # - name: Print Output
+      #   id: print_output
+      #   run: |
+      #     result=$(cat smoke_test_results.json)
+      #     echo "Smoke Test Result: $result"
+      #     echo "::set-output name=result::$result"
       # Step to parse results and fail if there are failures
       # - name: Parse Results and Check Failures
       #   if: ${{ github.event.inputs.smoke_tests == 'yes' }}
