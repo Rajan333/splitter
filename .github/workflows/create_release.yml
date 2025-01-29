@@ -114,7 +114,7 @@ jobs:
           RELEASE_ZIP="release-${SERVICE}-${{ steps.bump_version.outputs.version }}.zip"
 
           # Create a ZIP file for the selected service directory
-          zip -r $RELEASE_ZIP $SERVICE
+          zip -r $RELEASE_ZIP $SERVICE package.json
           echo "Created release package: $RELEASE_ZIP"
       
       - name: Tag and Create GitHub Release
