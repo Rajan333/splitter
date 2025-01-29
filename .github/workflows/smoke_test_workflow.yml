@@ -101,6 +101,34 @@ jobs:
       #     fi
       #     echo "All smoke tests passed successfully."
 
+      - name: Fetch Artifact from Workflow B
+        uses: actions/download-artifact@v3
+        with:
+          name: smoke-test-results
+          path: ./
+
+      - name: Read and Use Output
+        run: |
+          RESULT=$(cat smoke_test_results.json)
+          echo "Output from Workflow B: $RESULT"
+
+           # Extract values from the JSON
+          passed=$(echo $output | jq -r '.Passed' | xargs)
+          failed=$(echo $output | jq -r '.Failed' | xargs)
+          flaky=$(echo $output | jq -r '.Flaky' | xargs)
+
+          echo "Passed tests: $passed"
+          echo "Failed tests: $failed"
+          echo "Flaky tests: $flaky"
+
+          # Fail the workflow if there are failed tests
+          if [ "$failed" -gt 0 ]; then
+            echo "Test failed with $failed failed cases."
+            exit 1
+          fi
+          echo "All smoke tests passed successfully."
+          
+          
       - name: Process Test Results
         if: ${{ github.event.inputs.smoke_tests == 'yes' }}
         id: process_results
