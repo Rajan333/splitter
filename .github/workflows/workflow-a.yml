@@ -86,8 +86,12 @@ jobs:
       - name: Parse JSON and Print Failed & Flaky Values
         run: |
           echo "Parsing JSON output..."
+          passed_count=$(jq -r '.Passed' results.json)
           failed_count=$(jq -r '.Failed' results.json)
           flaky_count=$(jq -r '.Flaky' results.json)
-
+          
+          echo "Failed Test Count: $failed_count"
           echo "Failed Test Count: $failed_count"
           echo "Flaky Test Count: $flaky_count"
+
+          
