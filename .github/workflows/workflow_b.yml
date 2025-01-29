@@ -1,0 +1,15 @@
+name: Workflow B - Generate Output
+
+on:
+  workflow_dispatch:  # This allows it to be triggered from Workflow A
+
+jobs:
+  generate_output:
+    runs-on: ubuntu-latest
+    outputs:
+      smoke_test_result: ${{ steps.smoke_test_step.outputs.result }}
+    steps:
+      - name: Generate Output
+        id: smoke_test_step
+        run: |
+          echo "::set-output name=result::All smoke tests passed successfully!"
