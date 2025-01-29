@@ -99,11 +99,12 @@ jobs:
       - name: Retain Only Selected Service Directory
         run: |
           SERVICE="${{ github.event.inputs.service }}"
-          
+          mv apps/$SERVICE .
           # Remove all files and directories except the selected service and .git folder
           find . -mindepth 1 -maxdepth 1 \
             ! -name "$SERVICE" \
             ! -name ".git" \
+            ! -name "package.json" \
             -exec rm -rf {} +
           echo "Retained only the $SERVICE directory."
 
