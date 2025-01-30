@@ -1,0 +1,71 @@
+name: Deploy Microservice
+
+on:
+  workflow_dispatch:
+    inputs:
+      env:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options:
+          - Dev
+          - Staging
+          - Prod
+      service:
+        description: 'Service to deploy'
+        required: true
+        type: choice
+        options:
+          - attribution-service
+          - deployment-service
+          - dummy-service
+      version:
+        description: 'Version to deploy'
+        required: true
+        type: string
+
+jobs:
+  update-config:
+    name: Update Deployment YAML
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Update Image Version in Deployment YAML
+        run: |
+          YAML_FILE="Deployment Dev.yaml"
+          SERVICE_NAME="apps-${{ github.event.inputs.service }}"
+          NEW_IMAGE_TAG="ghcr.io/resilience-lab/resilience-platform/${{ github.event.inputs.service }}-${{ github.event.inputs.env }}:${{ github.event.inputs.version }}"
+
+          echo "Updating image for $SERVICE_NAME in $YAML_FILE to $NEW_IMAGE_TAG"
+
+          # Update the image tag in Deployment YAML
+          sed -i "s|image: ghcr.io/resilience-lab/resilience-platform/${{ github.event.inputs.service }}-dev:[^ ]*|image: $NEW_IMAGE_TAG|g" "$YAML_FILE"
+
+      - name: Commit and Push Changes
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add Deployment\ Dev.yaml
+          git commit -m "Updated ${{ github.event.inputs.service }} deployment to version ${{ github.event.inputs.version }} in ${{ github.event.inputs.env }}"
+          git push origin ${{ github.ref_name }}
+
+  trigger-deployment:
+    name: Deploy Service
+    needs: update-config
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Service Deployment
+        run: |
+          if [[ "${{ github.event.inputs.service }}" == "attribution-service" ]]; then
+            echo "Triggering Attribution Service Deployment..."
+            gh workflow run "Attribution Service.yaml" -f ref=${{ github.event.inputs.version }} -f env=${{ github.event.inputs.env }}
+          elif [[ "${{ github.event.inputs.service }}" == "deployment-service" ]]; then
+            echo "Triggering Deployment Service..."
+            gh workflow run "Deployment Service.yaml" -f ref=${{ github.event.inputs.version }} -f env=${{ github.event.inputs.env }}
+          else
+            echo "No specific workflow found for ${{ github.event.inputs.service }}. Exiting."
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
