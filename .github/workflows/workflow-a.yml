@@ -2,6 +2,11 @@ name: Workflow A - Trigger and Fetch Output from Workflow B
 
 on:
   workflow_dispatch:
+    inputs:
+      smoke_tests:
+        description: 'Run Smoke Tests? (yes or no)'
+        required: true
+        default: 'no'
 
 jobs:
   trigger-and-fetch-results:
@@ -11,7 +16,17 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
+      # Conditional step: Check if smoke tests should be run
+      - name: Check Input for Smoke Tests
+        id: check_input
+        run: |
+          if [ "${{ github.event.inputs.smoke_tests }}" != "yes" ]; then
+            echo "Smoke tests input is 'no', skipping the tests."
+          fi
+          echo "Proceeding without smoke tests."
+
       - name: Trigger Workflow B
+        if: ${{ github.event.inputs.smoke_tests == 'yes' }}
         id: trigger_b
         run: |
           echo "Triggering Workflow B..."
@@ -23,6 +38,7 @@ jobs:
           echo "Workflow B triggered."
 
       - name: Wait for Workflow B to Complete
+        if: ${{ github.event.inputs.smoke_tests == 'yes' }}
         id: wait_for_b
         run: |
           echo "Waiting for Workflow B to complete..."
@@ -59,6 +75,7 @@ jobs:
           done
 
       - name: Download Artifact from Workflow B
+        if: ${{ github.event.inputs.smoke_tests == 'yes' }}
         id: download_artifact
         run: |
           echo "Fetching Artifact from Workflow B..."
@@ -84,6 +101,7 @@ jobs:
           cat results.json
 
       - name: Parse JSON and Print Failed & Flaky Values
+        if: ${{ github.event.inputs.smoke_tests == 'yes' }}
         id: parse_results
         run: |
           echo "Parsing JSON output..."
@@ -100,7 +118,7 @@ jobs:
           echo "::set-output name=flaky::$flaky_count"
 
       - name: Send Slack Notification if Failed > 0
-        if: ${{ steps.parse_results.outputs.failed > 0 }}
+        if: ${{ steps.parse_results.outputs.failed > 0 }} && ${{ github.event.inputs.smoke_tests == 'yes' }}
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
         run: |
@@ -115,7 +133,11 @@ jobs:
           }' "$SLACK_WEBHOOK_URL"
 
       - name: Fail Workflow if Failed > 0
-        if: ${{ steps.parse_results.outputs.failed > 0 }}
+        if: ${{ steps.parse_results.outputs.failed > 0 }} && ${{ github.event.inputs.smoke_tests == 'yes' }}
         run: |
           echo "Test failures detected! Failing the workflow."
           exit 1
+
+      # Install jq for JSON parsing
+      - name: Finalize Output
+        run: echo "Workflow Completed"
