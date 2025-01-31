@@ -118,7 +118,7 @@ jobs:
           echo "::set-output name=flaky::$flaky_count"
 
       - name: Send Slack Notification if Failed > 0
-        if: ${{ github.event.inputs.smoke_tests == 'yes' }} && ${{ steps.parse_results.outputs.failed > 0 }}
+        if: ${{ github.event.inputs.smoke_tests == 'yes' && steps.parse_results.outputs.failed > 0 }}
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
         run: |
@@ -133,11 +133,11 @@ jobs:
           }' "$SLACK_WEBHOOK_URL"
 
       - name: Fail Workflow if Failed > 0
-        if: ${{ github.event.inputs.smoke_tests == 'yes' }} && ${{ steps.parse_results.outputs.failed > 0 }}
+        if: ${{ github.event.inputs.smoke_tests == 'yes' && steps.parse_results.outputs.failed > 0 }}
         run: |
           echo "Test failures detected! Failing the workflow."
           exit 1
 
-      # Install jq for JSON parsing
+      # Install Finalize Output
       - name: Finalize Output
         run: echo "Workflow Completed"
