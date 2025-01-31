@@ -16,7 +16,7 @@ jobs:
         run: |
           echo '{
             "Passed": "5",
-            "Failed": "1",
+            "Failed": "0",
             "Flaky": "1"
           }' > results.json
 
