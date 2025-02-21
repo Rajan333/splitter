@@ -1,0 +1,68 @@
+name: KMS Key Rotation Workflow
+
+on:
+  workflow_dispatch:
+    inputs:
+      kms_key_rotation:
+        description: 'Do you want to rotate the KMS key? (yes/no)'
+        required: true
+        default: 'no'
+      schema_name:
+        description: 'KMS Key Rotation Schema Name'
+        required: true
+        default: 'default-schema'
+
+jobs:
+  rotate-kms-key:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Set up Environment
+        run: |
+          echo "Starting KMS Key Rotation process..."
+          echo "KMS Key Rotation: ${{ github.event.inputs.kms_key_rotation }}"
+          echo "Schema Name: ${{ github.event.inputs.schema_name }}"
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}  # e.g., 'us-east-1'
+
+      - name: Generate New KMS Key and Call Stored Procedure (if rotation requested)
+        if: github.event.inputs.kms_key_rotation == 'yes'
+        run: |
+          echo "Generating new KMS key with the same alias..."
+          aws kms create-key --description "New KMS key for rotation" --key-usage ENCRYPT_DECRYPT --tags TagKey=Alias,TagValue=kms-key-alias
+          NEW_KEY_ARN=$(aws kms list-aliases --query 'Aliases[?AliasName==`alias/kms-key-alias`].TargetKeyId' --output text)
+          aws kms update-alias --alias-name alias/kms-key-alias --target-key-id $NEW_KEY_ARN
+          echo "New KMS key generated successfully with alias: kms-key-alias"
+
+          echo "Calling stored procedure in the database to decrypt and re-encrypt data with the new key..."
+          aws rds-data execute-statement \
+            --resource-arn "${{ secrets.DB_CLUSTER_ARN }}" \
+            --secret-arn "${{ secrets.DB_SECRET_ARN }}" \
+            --database "${{ secrets.DB_DATABASE }}" \
+            --sql "CALL decrypt_and_reencrypt_data_with_new_key('new')" \
+            --include-result-metadata
+          echo "Data successfully decrypted and re-encrypted with the new KMS key"
+
+      - name: Call Stored Procedure with Current Key (if no rotation requested)
+        if: github.event.inputs.kms_key_rotation == 'no'
+        run: |
+          echo "Calling stored procedure in the database to decrypt and re-encrypt data with the current key..."
+          aws rds-data execute-statement \
+            --resource-arn "${{ secrets.DB_CLUSTER_ARN }}" \
+            --secret-arn "${{ secrets.DB_SECRET_ARN }}" \
+            --database "${{ secrets.DB_DATABASE }}" \
+            --sql "CALL decrypt_and_reencrypt_data_with_new_key('current')" \
+            --include-result-metadata
+          echo "Data successfully decrypted and re-encrypted with the current KMS key"
+
+      - name: Complete Workflow
+        run: |
+          echo "KMS Key Rotation workflow completed for schema: ${{ github.event.inputs.schema_name }}"
+          echo "KMS Key Rotation performed: ${{ github.event.inputs.kms_key_rotation }}"
