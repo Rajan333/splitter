@@ -44,7 +44,7 @@ jobs:
         if: github.event.inputs.kms_key_rotation == 'yes'
         run: |
           aws rds modify-db-instance \
-            --db-instance-identifier ${{ env.RDS_INSTANCE_ID }} \
+            --db-instance-identifier "database-1-instance-1" \
             --apply-immediately
 
       # Wait for RDS to be available after decryption
