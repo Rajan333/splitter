@@ -53,14 +53,14 @@ jobs:
       - name: Call Stored Procedure with Current Key (if no rotation requested)
         if: github.event.inputs.kms_key_rotation == 'no'
         run: |
-          echo "Calling stored procedure in the database to decrypt and re-encrypt data with the current key..."
+          echo "Calling stored procedure directly with the current key..."
           aws rds-data execute-statement \
             --resource-arn "${{ secrets.DB_CLUSTER_ARN }}" \
             --secret-arn "${{ secrets.DB_SECRET_ARN }}" \
             --database "${{ secrets.DB_DATABASE }}" \
-            --sql "CALL decrypt_and_reencrypt_data_with_new_key('current')" \
+            --sql "select * from users;" \
             --include-result-metadata
-          echo "Data successfully decrypted and re-encrypted with the current KMS key"
+          echo "Data successfully retrieved with the current KMS key"
 
       - name: Complete Workflow
         run: |
