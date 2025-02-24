@@ -58,7 +58,7 @@ jobs:
             --resource-arn "${{ secrets.DB_CLUSTER_ARN }}" \
             --secret-arn "${{ secrets.DB_SECRET_ARN }}" \
             --database "${{ secrets.DB_DATABASE }}" \
-            --sql "select * from users;" \
+            --sql "CALL gettablesdata2();" \
             --include-result-metadata
           echo "Data successfully retrieved with the current KMS key"
 
