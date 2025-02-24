@@ -11,7 +11,14 @@ on:
         description: 'KMS Key Rotation Schema Name'
         required: true
         default: 'default-schema'
-
+    
+    # Define environment variables
+    env:
+      AWS_REGION: us-east-1  # Change to your region
+      RDS_INSTANCE_ID: database-1-instance-1  # Change to your RDS instance ID
+      KMS_ALIAS: alias/rds-encryption-key  # Your KMS key alias
+      SQL_QUERY: "SELECT * FROM users"  # Your SQL query
+      
 jobs:
   rotate-kms-key:
     runs-on: ubuntu-latest
@@ -31,24 +38,99 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}  # e.g., 'us-east-1'
-
-      - name: Generate New KMS Key and Call Stored Procedure (if rotation requested)
+      
+      # Step 1: Decrypt RDS instance using existing KMS key
+      - name: Decrypt RDS Instance
         if: github.event.inputs.kms_key_rotation == 'yes'
         run: |
-          echo "Generating new KMS key with the same alias..."
-          aws kms create-key --description "New KMS key for rotation" --key-usage ENCRYPT_DECRYPT --tags TagKey=Alias,TagValue=kms-key-alias
-          NEW_KEY_ARN=$(aws kms list-aliases --query 'Aliases[?AliasName==`alias/kms-key-alias`].TargetKeyId' --output text)
-          aws kms update-alias --alias-name alias/kms-key-alias --target-key-id $NEW_KEY_ARN
-          echo "New KMS key generated successfully with alias: kms-key-alias"
+          aws rds modify-db-instance \
+            --db-instance-identifier ${{ env.RDS_INSTANCE_ID }} \
+            --no-storage-encrypted \
+            --apply-immediately
 
-          echo "Calling stored procedure in the database to decrypt and re-encrypt data with the new key..."
-          aws rds-data execute-statement \
-            --resource-arn "${{ secrets.DB_CLUSTER_ARN }}" \
-            --secret-arn "${{ secrets.DB_SECRET_ARN }}" \
-            --database "${{ secrets.DB_DATABASE }}" \
-            --sql "CALL decrypt_and_reencrypt_data_with_new_key('new')" \
-            --include-result-metadata
-          echo "Data successfully decrypted and re-encrypted with the new KMS key"
+      # Wait for RDS to be available after decryption
+      - name: Wait for RDS Decryption
+        if: github.event.inputs.kms_key_rotation == 'yes'
+        run: |
+          aws rds wait db-instance-available \
+            --db-instance-identifier ${{ env.RDS_INSTANCE_ID }}
+
+      # Step 2: Run SQL query (example using PostgreSQL)
+      - name: Execute SQL Query
+        if: github.event.inputs.kms_key_rotation == 'yes'
+        run: |
+          # Get RDS endpoint
+          ENDPOINT=$(aws rds describe-db-instances \
+            --db-instance-identifier ${{ env.RDS_INSTANCE_ID }} \
+            --query 'DBInstances[0].Endpoint.Address' \
+            --output text)
+          
+          # Execute query (adjust connection details as needed)
+          # psql "host=$ENDPOINT port=5432 dbname=your_db user=your_user password=your_password" \
+            # -c "${{ env.SQL_QUERY }}"
+            psql -h database-1-instance-1.cxwg00iiejts.us-east-1.rds.amazonaws.com -U postgres password=Middha#373 -c "CALL gettablesdata4();"
+
+      # Step 3: Create new KMS key with same alias
+      - name: Create New KMS Key and Update Alias
+        if: github.event.inputs.kms_key_rotation == 'yes'
+        run: |
+          # Create new KMS key
+          NEW_KEY_ID=$(aws kms create-key \
+            --description "New RDS encryption key" \
+            --query 'KeyMetadata.KeyId' \
+            --output text)
+          
+          # Delete existing alias
+          aws kms delete-alias \
+            --alias-name ${{ env.KMS_ALIAS }} || true
+          
+          # Create new alias pointing to new key
+          aws kms create-alias \
+            --alias-name ${{ env.KMS_ALIAS }} \
+            --target-key-id $NEW_KEY_ID
+
+      # Step 4: Encrypt RDS with new KMS key
+      - name: Encrypt RDS with New Key
+        if: github.event.inputs.kms_key_rotation == 'yes'
+        run: |
+          aws rds modify-db-instance \
+            --db-instance-identifier ${{ env.RDS_INSTANCE_ID }} \
+            --storage-encrypted \
+            --kms-key-id ${{ env.KMS_ALIAS }} \
+            --apply-immediately
+
+      # Wait for RDS to be available after encryption
+      - name: Wait for RDS Encryption
+        if: github.event.inputs.kms_key_rotation == 'yes'
+        run: |
+          aws rds wait db-instance-available \
+            --db-instance-identifier ${{ env.RDS_INSTANCE_ID }}
+
+      # Verify the update
+      - name: Verify RDS Encryption Status
+        if: github.event.inputs.kms_key_rotation == 'yes'
+        run: |
+          aws rds describe-db-instances \
+            --db-instance-identifier ${{ env.RDS_INSTANCE_ID }} \
+            --query 'DBInstances[0].[DBInstanceIdentifier,StorageEncrypted,KmsKeyId]' \
+            --output table
+      # - name: Generate New KMS Key and Call Stored Procedure (if rotation requested)
+      #   if: github.event.inputs.kms_key_rotation == 'yes'
+      #   run: |
+      #     echo "Generating new KMS key with the same alias..."
+      #     aws kms create-key --description "New KMS key for rotation" --key-usage ENCRYPT_DECRYPT --tags TagKey=Alias,TagValue=kms-key-alias
+      #     NEW_KEY_ARN=$(aws kms list-aliases --query 'Aliases[?AliasName==`alias/kms-key-alias`].TargetKeyId' --output text)
+      #     aws kms update-alias --alias-name alias/kms-key-alias --target-key-id $NEW_KEY_ARN
+      #     echo "New KMS key generated successfully with alias: kms-key-alias"
+
+      #     echo "Calling stored procedure in the database to decrypt and re-encrypt data with the new key..."
+      #     aws rds-data execute-statement \
+      #       --resource-arn "${{ secrets.DB_CLUSTER_ARN }}" \
+      #       --secret-arn "${{ secrets.DB_SECRET_ARN }}" \
+      #       --database "${{ secrets.DB_DATABASE }}" \
+      #       --sql "CALL decrypt_and_reencrypt_data_with_new_key('new')" \
+      #       --include-result-metadata
+      #     echo "Data successfully decrypted and re-encrypted with the new KMS key"
 
       - name: Call Stored Procedure with Current Key (if no rotation requested)
         if: github.event.inputs.kms_key_rotation == 'no'
