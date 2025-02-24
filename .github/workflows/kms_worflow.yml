@@ -15,7 +15,7 @@ on:
     # Define environment variables
     env:
       AWS_REGION: us-east-1  # Change to your region
-      RDS_INSTANCE_ID: database-1-instance-1  # Change to your RDS instance ID
+      RDS_INSTANCE_ID: "database-1-instance-1"  # Change to your RDS instance ID
       KMS_ALIAS: alias/rds-encryption-key  # Your KMS key alias
       SQL_QUERY: "SELECT * FROM users"  # Your SQL query
       
@@ -45,7 +45,6 @@ jobs:
         run: |
           aws rds modify-db-instance \
             --db-instance-identifier ${{ env.RDS_INSTANCE_ID }} \
-            --no-storage-encrypted \
             --apply-immediately
 
       # Wait for RDS to be available after decryption
