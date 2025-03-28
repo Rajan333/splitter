@@ -33,6 +33,7 @@ jobs:
       - name: Update policy.yaml
         run: |
           echo "Updating IAM policy with user: ${{ github.event.inputs.user_email }}"
+          ## This can be changed according to the requirement ##
           yq eval '.bindings += {"role": "roles/iap.httpsResourceAccessor", "members": ["group:EXAMPLE_GROUP@GOOGLE.COM", "user:${{ github.event.inputs.user_email }}"], "condition": {"expression": "\"accessPolicies/12345678/accessLevels/TestAccess\" in request.auth.access_levels && request.path.startsWith(\"/\")", "title": "Access-test"}}' -i policy.yaml
 
       - name: Apply updated IAM policy
