@@ -1,0 +1,39 @@
+name: Update IAM Policy
+
+on:
+  workflow_dispatch:
+    inputs:
+      user_email:
+        description: 'User Email to grant access'
+        required: true
+
+jobs:
+  update-iam-policy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Authenticate with Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Install gcloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: RL-BCE-01
+
+      - name: Install yq
+        run: sudo apt-get update && sudo apt-get install -y yq
+
+      - name: Fetch current IAM policy
+        run: gcloud projects get-iam-policy RL-BCE-01 > policy.yaml
+
+      - name: Update policy.yaml
+        run: |
+          echo "Updating IAM policy with user: ${{ github.event.inputs.user_email }}"
+          yq eval '.bindings += {"role": "roles/iap.httpsResourceAccessor", "members": ["group:EXAMPLE_GROUP@GOOGLE.COM", "user:${{ github.event.inputs.user_email }}"], "condition": {"expression": "\"accessPolicies/12345678/accessLevels/TestAccess\" in request.auth.access_levels && request.path.startsWith(\"/\")", "title": "Access-test"}}' -i policy.yaml
+
+      - name: Apply updated IAM policy
+        run: gcloud projects set-iam-policy RL-BCE-01 policy.yaml
