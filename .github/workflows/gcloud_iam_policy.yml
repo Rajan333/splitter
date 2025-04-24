@@ -24,8 +24,14 @@ jobs:
         with:
           project_id: useful-device-455113-j0
 
-      - name: Install yq
-        run: sudo apt-get update && sudo apt-get install -y yq
+      # - name: Install yq
+      #   run: sudo apt-get update && sudo apt-get install -y yq
+
+      - name: Install yq (mikefarah version)
+        run: |
+          sudo wget https://github.com/mikefarah/yq/releases/download/v4.40.5/yq_linux_amd64 -O /usr/bin/yq
+          sudo chmod +x /usr/bin/yq
+          yq --version
 
       - name: Fetch current IAM policy
         run: gcloud projects get-iam-policy useful-device-455113-j0 > policy.yaml
