@@ -36,6 +36,9 @@ jobs:
       - name: Fetch current IAM policy
         run: gcloud projects get-iam-policy useful-device-455113-j0 > policy.yaml
 
+      - name: Print Policy
+        run: cat policy.yaml
+        
       - name: Update policy.yaml
         run: |
           echo "Updating IAM policy with user: ${{ github.event.inputs.user_email }}"
