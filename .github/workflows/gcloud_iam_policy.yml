@@ -6,6 +6,9 @@ on:
       user_email:
         description: 'User Email to grant access'
         required: true
+      project_id:
+        description: 'GCP Project ID'
+        required: true
 
 jobs:
   update-iam-policy:
@@ -22,7 +25,7 @@ jobs:
       - name: Install gcloud SDK
         uses: google-github-actions/setup-gcloud@v2
         with:
-          project_id: useful-device-455113-j0
+          project_id: ${{ github.event.inputs.project_id }}
 
       - name: Install yq (mikefarah version)
         run: |
@@ -31,16 +34,15 @@ jobs:
           yq --version
 
       - name: Fetch current IAM policy
-        run: gcloud projects get-iam-policy useful-device-455113-j0 > policy.yaml
+        run: gcloud projects get-iam-policy ${{ github.event.inputs.project_id }} > policy.yaml
 
       - name: Print Policy
         run: cat policy.yaml
-        
+
       - name: Update policy.yaml
         run: |
           echo "Updating IAM policy with user: ${{ github.event.inputs.user_email }}"
-          ## This can be changed according to the requirement ##
           yq eval '.bindings += [{"role": "roles/viewer", "members": ["user:${{ github.event.inputs.user_email }}"]}]' -i policy.yaml
 
       - name: Apply updated IAM policy
-        run: gcloud projects set-iam-policy useful-device-455113-j0 policy.yaml
+        run: gcloud projects set-iam-policy ${{ github.event.inputs.project_id }} policy.yaml
