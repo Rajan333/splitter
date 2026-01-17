@@ -1,0 +1,18 @@
+---
+# Example variables file for video splitter playbook
+# Usage: ansible-playbook playbooks/splitter.yml --extra-vars "@playbooks/example_vars.yml"
+
+# Split method: "time" or "size"
+split_type: "time"
+
+# Segment value:
+# - For time split: duration in seconds (e.g., 60 for 1-minute segments)
+# - For size split: size in MB (e.g., 100 for 100MB chunks)
+segment_value: "30"
+
+# Input file settings
+input_file_location: "/tmp/videos"
+input_file: "sample.mp4"
+
+# Output file settings
+output_file_location: "./output_files"

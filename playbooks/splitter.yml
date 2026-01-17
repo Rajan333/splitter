@@ -1,0 +1,188 @@
+---
+# Ansible Playbook for Video Splitter
+# Author: RAJAN MIDDHA (Converted from splitter.sh)
+# This playbook splits video files using ffmpeg either by time duration or file size
+
+- name: Video Splitter Playbook
+  hosts: localhost
+  gather_facts: no
+
+  vars:
+    # Default values (can be overridden via --extra-vars)
+    split_type: "time"  # Options: "time" or "size"
+    segment_value: "10"  # Duration in seconds for time split, or size in MB for size split
+    input_file_location: "/tmp/videos"
+    output_file_location: "{{ playbook_dir }}/output_files"
+    input_file: "sample.mp4"
+
+  tasks:
+    - name: Ensure ffmpeg and ffprobe are installed
+      package:
+        name:
+          - ffmpeg
+        state: present
+      become: yes
+      ignore_errors: yes  # In case running without sudo or ffmpeg already installed via other means
+
+    - name: Display configuration
+      debug:
+        msg:
+          - "Split Type: {{ split_type }}"
+          - "Segment Value: {{ segment_value }}"
+          - "Input File Location: {{ input_file_location }}"
+          - "Output File Location: {{ output_file_location }}"
+          - "Input File: {{ input_file }}"
+
+    - name: Validate split_type parameter
+      fail:
+        msg: "Invalid split_type. Must be 'time' or 'size'."
+      when: split_type not in ['time', 'size']
+
+    - name: Check if input file exists
+      stat:
+        path: "{{ input_file_location }}/{{ input_file }}"
+      register: input_file_stat
+
+    - name: Fail if input file does not exist
+      fail:
+        msg: "Input file {{ input_file_location }}/{{ input_file }} does not exist"
+      when: not input_file_stat.stat.exists
+
+    - name: Create output directory
+      file:
+        path: "{{ output_file_location }}"
+        state: directory
+        mode: '0755'
+
+    - name: Extract output file name and extension
+      set_fact:
+        output_file_name: "{{ input_file | regex_replace('\\.[^.]+$', '') }}"
+        output_file_extension: "{{ input_file | regex_replace('^.*\\.', '') }}"
+
+    - name: Display output file details
+      debug:
+        msg:
+          - "Output File Name: {{ output_file_name }}"
+          - "Output File Extension: {{ output_file_extension }}"
+
+    # Split by Time Duration
+    - name: Split video by time duration
+      block:
+        - name: Get video duration using ffprobe
+          shell: |
+            ffprobe -i "{{ input_file_location }}/{{ input_file }}" 2>&1 | grep Duration | awk '{print $2}' | tr -d ','
+          register: duration_output
+
+        - name: Display video duration
+          debug:
+            msg: "Video Duration: {{ duration_output.stdout }}"
+
+        - name: Convert duration to timestamp
+          shell: |
+            echo "{{ duration_output.stdout }}" | awk -F: '{ print ($1 * 3600) + ($2 * 60) + $3 }'
+          register: duration_timestamp
+
+        - name: Display duration in seconds
+          debug:
+            msg: "Duration in seconds: {{ duration_timestamp.stdout }}"
+
+        - name: Split video into segments by time
+          shell: |
+            ffmpeg -i "{{ input_file_location }}/{{ input_file }}" \
+              -c copy -map 0 \
+              -segment_time {{ segment_value }} \
+              -reset_timestamps 1 \
+              -f segment \
+              "{{ output_file_location }}/{{ output_file_name }}%03d.{{ output_file_extension }}"
+          register: split_result
+
+        - name: Display success message
+          debug:
+            msg: "Video successfully split by time into {{ segment_value }} second segments"
+
+      when: split_type == "time"
+
+    # Split by File Size
+    - name: Split video by file size
+      block:
+        - name: Get video duration in seconds
+          shell: |
+            ffprobe "{{ input_file_location }}/{{ input_file }}" -show_format -v quiet | grep "duration" | cut -d "=" -f2
+          register: video_duration
+
+        - name: Display video duration
+          debug:
+            msg: "Video duration: {{ video_duration.stdout }} seconds"
+
+        - name: Create temporary script for size-based splitting
+          copy:
+            dest: "/tmp/split_by_size.sh"
+            mode: '0755'
+            content: |
+              #!/bin/bash
+              VIDEO_SEGMENT_SIZE="{{ segment_value }}"
+              VIDEO_DURATION="{{ video_duration.stdout }}"
+              INPUT_FILE_LOCATION="{{ input_file_location }}"
+              INPUT_FILE="{{ input_file }}"
+              OUTPUT_FILE_LOCATION="{{ output_file_location }}"
+              OUTPUT_FILE_NAME="{{ output_file_name }}"
+              OUTPUT_FILE_EXTENSION="{{ output_file_extension }}"
+
+              START_TIME=0
+              CHUNK_NUMBER=0
+
+              while true; do
+                CHUNK_NUMBER=$((CHUNK_NUMBER+1))
+                echo "Preparing chunk # ${CHUNK_NUMBER}"
+
+                ffmpeg -loglevel panic -ss ${START_TIME} \
+                  -i "${INPUT_FILE_LOCATION}/${INPUT_FILE}" \
+                  -vcodec copy -acodec copy \
+                  -fs ${VIDEO_SEGMENT_SIZE}Mi \
+                  "${OUTPUT_FILE_LOCATION}/${OUTPUT_FILE_NAME}${CHUNK_NUMBER}.${OUTPUT_FILE_EXTENSION}"
+
+                LAST_VIDEO_DURATION=$(ffprobe "${OUTPUT_FILE_LOCATION}/${OUTPUT_FILE_NAME}${CHUNK_NUMBER}.${OUTPUT_FILE_EXTENSION}" \
+                  -show_format -v quiet | grep "duration" | cut -d "=" -f2)
+
+                OFFSET_DURATION=$(echo $START_TIME + $LAST_VIDEO_DURATION | bc)
+                echo "Offset duration: $OFFSET_DURATION"
+
+                if [ $(echo "$OFFSET_DURATION >= $VIDEO_DURATION" | bc) -ne 0 ]; then
+                  echo "Removing redundant chunk..."
+                  rm -rf "${OUTPUT_FILE_LOCATION}/${OUTPUT_FILE_NAME}${CHUNK_NUMBER}.${OUTPUT_FILE_EXTENSION}"
+                  break
+                else
+                  START_TIME=$(echo $START_TIME + $LAST_VIDEO_DURATION | bc)
+                fi
+              done
+
+              echo "Video successfully chunked by size"
+
+        - name: Execute size-based splitting script
+          shell: /tmp/split_by_size.sh
+          register: size_split_result
+
+        - name: Display split output
+          debug:
+            msg: "{{ size_split_result.stdout_lines }}"
+
+        - name: Clean up temporary script
+          file:
+            path: /tmp/split_by_size.sh
+            state: absent
+
+        - name: Display success message
+          debug:
+            msg: "Video successfully split by size into {{ segment_value }}MB segments"
+
+      when: split_type == "size"
+
+    - name: List output files
+      find:
+        paths: "{{ output_file_location }}"
+        patterns: "{{ output_file_name }}*"
+      register: output_files
+
+    - name: Display created files
+      debug:
+        msg: "Created {{ output_files.files | length }} file(s) in {{ output_file_location }}"
