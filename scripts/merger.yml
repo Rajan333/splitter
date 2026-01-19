@@ -1,0 +1,86 @@
+---
+##__AUTHOR: RAJAN MIDDHA__##
+# Ansible Playbook to merge video segments using ffmpeg
+# This playbook is a conversion of merger.sh bash script
+
+- name: Merge Video Segments
+  hosts: localhost
+  gather_facts: no
+
+  vars:
+    # Default values (can be overridden with --extra-vars)
+    input_folder: "/Users/rajan/ns/splitter/scripts/output_files"
+    output_folder: "/Users/rajan/ns/splitter/scripts/output_files"
+    output_filename: "out.mp4"
+    merge_list_file: "merge_list.txt"
+
+  tasks:
+    - name: Ensure output directory exists
+      ansible.builtin.file:
+        path: "{{ output_folder }}"
+        state: directory
+        mode: '0755'
+
+    - name: Check if input folder exists
+      ansible.builtin.stat:
+        path: "{{ input_folder }}"
+      register: input_folder_stat
+
+    - name: Fail if input folder does not exist
+      ansible.builtin.fail:
+        msg: "Input folder {{ input_folder }} does not exist"
+      when: not input_folder_stat.stat.exists
+
+    - name: Get list of video segments from input folder
+      ansible.builtin.find:
+        paths: "{{ input_folder }}"
+        file_type: file
+      register: video_segments
+
+    - name: Fail if no video segments found
+      ansible.builtin.fail:
+        msg: "No video segments found in {{ input_folder }}"
+      when: video_segments.files | length == 0
+
+    - name: Sort video segments by modification time
+      ansible.builtin.set_fact:
+        sorted_segments: "{{ video_segments.files | sort(attribute='mtime') }}"
+
+    - name: Create merge list file (initialize)
+      ansible.builtin.copy:
+        content: ""
+        dest: "{{ merge_list_file }}"
+        mode: '0644'
+
+    - name: Add segments to merge list file
+      ansible.builtin.lineinfile:
+        path: "{{ merge_list_file }}"
+        line: "file '{{ item.path }}'"
+        create: yes
+      loop: "{{ sorted_segments }}"
+      loop_control:
+        label: "{{ item.path | basename }}"
+
+    - name: Display merge information
+      ansible.builtin.debug:
+        msg:
+          - "Input folder: {{ input_folder }}"
+          - "Output folder: {{ output_folder }}"
+          - "Output filename: {{ output_filename }}"
+          - "Number of segments: {{ sorted_segments | length }}"
+
+    - name: Merge video segments using ffmpeg
+      ansible.builtin.command:
+        cmd: "ffmpeg -f concat -safe 0 -i {{ merge_list_file }} -c copy {{ output_folder }}/{{ output_filename }}"
+      register: ffmpeg_result
+      changed_when: true
+
+    - name: Display merge result
+      ansible.builtin.debug:
+        msg: "Video segments merged successfully to {{ output_folder }}/{{ output_filename }}"
+      when: ffmpeg_result.rc == 0
+
+    - name: Clean up merge list file
+      ansible.builtin.file:
+        path: "{{ merge_list_file }}"
+        state: absent
